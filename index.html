@@ -32,32 +32,34 @@ const GIFT_EFFECTS = {
     image: "Baseball.png",
     countLimit: 20,
     duration: 3000,
+    spawnInterval: 120, // ← ここで出るテンポ調整
 
     start: {
       x: [0.4, 0.6],
-      y: [0.96, 0.99],
-      size: [200, 230]
+      y: [0.95, 0.95],
+      size: [120, 140]
     },
 
     end: {
       x: [0.48, 0.52],
-      y: [0.45, 0.5],
-      size: [20, 30]
+      y: [0.35, 0.4],
+      size: [30, 40]
     },
 
     fadeOut: true,
 
     motion: {
       type: "linear",
-      rotate: true,
+      rotate: false,
       float: false
     }
   },
 
   surprised_fish: {
     image: "Surprised_Fish.png",
-    countLimit: 30,
+    countLimit: 15,
     duration: 5000,
+    spawnInterval: 200,
 
     start: {
       x: [-0.1, -0.05],
@@ -110,11 +112,11 @@ const W = window.innerWidth;
 const H = window.innerHeight;
 
 /* ==============================
-   🎨 アイテム生成
+   🎨 アイテム生成（時間差）
 ================================ */
 const items = [];
 
-for (let i = 0; i < COUNT; i++) {
+function spawnItem() {
   const img = document.createElement("img");
   img.src = effect.image;
   img.className = "effect-item";
@@ -124,6 +126,7 @@ for (let i = 0; i < COUNT; i++) {
 
   const item = {
     el: img,
+    startTime: performance.now(),
 
     sx: rand(effect.start.x[0] * W, effect.start.x[1] * W),
     sy: rand(effect.start.y[0] * H, effect.start.y[1] * H),
@@ -131,7 +134,8 @@ for (let i = 0; i < COUNT; i++) {
     ex: rand(effect.end.x[0] * W, effect.end.x[1] * W),
     ey: rand(effect.end.y[0] * H, effect.end.y[1] * H),
 
-    ss, es,
+    ss,
+    es,
     rotBase: rand(-15, 15),
     floatPhase: Math.random() * Math.PI * 2
   };
@@ -144,16 +148,18 @@ for (let i = 0; i < COUNT; i++) {
   items.push(item);
 }
 
+for (let i = 0; i < COUNT; i++) {
+  setTimeout(spawnItem, i * effect.spawnInterval);
+}
+
 /* ==============================
    🎞 アニメーション
 ================================ */
-const startTime = performance.now();
-
 function animate(now) {
-  const t = Math.min((now - startTime) / effect.duration, 1);
-  const p = easing(effect.motion.type, t);
-
   items.forEach(it => {
+    const t = Math.min((now - it.startTime) / effect.duration, 1);
+    const p = easing(effect.motion.type, t);
+
     let x = it.sx + (it.ex - it.sx) * p;
     let y = it.sy + (it.ey - it.sy) * p;
     let size = it.ss + (it.es - it.ss) * p;
@@ -178,7 +184,7 @@ function animate(now) {
     }
   });
 
-  if (t < 1) requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
 }
 
 requestAnimationFrame(animate);
