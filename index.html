@@ -2,58 +2,80 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ball move test</title>
+<title>multi balls</title>
 <style>
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background: transparent;   /* ← 透明 */
+  background: transparent;
   overflow: hidden;
 }
-
-/* 画像1個だけ */
-#ball {
+.ball {
   position: absolute;
-  width: 120px;
-  left: 50%;
-  top: 70%;
-  transform: translate(-50%, -50%);
+  width: 100px;
   pointer-events: none;
 }
 </style>
 </head>
 <body>
 
-<img id="ball" src="Baseball.png" alt="baseball">
-
 <script>
-const ball = document.getElementById("ball");
+// ===== 設定 =====
+const params = new URLSearchParams(location.search);
+const COUNT = Math.min(parseInt(params.get("n")) || 1, 30); // 上限30
+const DURATION = 3000; // 3秒
 
-// 開始位置
-let x = window.innerWidth / 2;
-let y = window.innerHeight * 0.7;
+// 画面サイズ
+const W = document.documentElement.clientWidth;
+const H = document.documentElement.clientHeight;
 
-// 速度（確認しやすい値）
-let vx = 2.5;
-let vy = -2.0;
+// ランダム関数
+const rand = (a, b) => Math.random() * (b - a) + a;
 
-function animate() {
-  x += vx;
-  y += vy;
+// ボール管理
+const balls = [];
 
-  // 画面外に出たら反射（見失わないため）
-  if (x < 0 || x > window.innerWidth) vx *= -1;
-  if (y < 0 || y > window.innerHeight) vy *= -1;
+// ===== 生成 =====
+for (let i = 0; i < COUNT; i++) {
+  const img = document.createElement("img");
+  img.src = "Baseball.png";
+  img.className = "ball";
 
-  ball.style.left = x + "px";
-  ball.style.top  = y + "px";
+  const ball = {
+    el: img,
+    x: rand(W * 0.2, W * 0.8),
+    y: rand(H * 0.7, H * 0.9),
+    vx: rand(-3, 3),
+    vy: rand(-5, -2)
+  };
+
+  img.style.left = ball.x + "px";
+  img.style.top  = ball.y + "px";
+
+  document.body.appendChild(img);
+  balls.push(ball);
+}
+
+// ===== アニメーション =====
+const start = performance.now();
+
+function animate(now) {
+  const elapsed = now - start;
+  if (elapsed > DURATION) return; // ← 3秒で終了
+
+  balls.forEach(b => {
+    b.x += b.vx;
+    b.y += b.vy;
+    b.el.style.left = b.x + "px";
+    b.el.style.top  = b.y + "px";
+  });
 
   requestAnimationFrame(animate);
 }
 
-animate();
+requestAnimationFrame(animate);
 </script>
 
 </body>
