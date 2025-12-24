@@ -17,7 +17,7 @@ html, body {
 .effect-item {
   position: absolute;
   pointer-events: none;
-  will-change: transform, width;
+  will-change: transform, opacity;
 }
 </style>
 </head>
@@ -25,61 +25,64 @@ html, body {
 
 <script>
 /* ==============================
-   🎁 ギフト演出 定義エリア
-   ここだけ編集すれば増やせる
+   🎁 ギフト演出 定義
 ================================ */
 const GIFT_EFFECTS = {
   baseball: {
-    tiktokName: "Baseball",
     image: "Baseball.png",
-
-    countLimit: 30,
+    countLimit: 20,
     duration: 3000,
 
     start: {
-      x: [0.2, 0.8],
-      y: [0.7, 0.9],
-      size: [80, 100]
+      x: [0.4, 0.6],
+      y: [0.95, 0.95],
+      size: [120, 140]
     },
 
     end: {
-      x: [0.0, 1.0],
-      y: [0.0, 0.3],
-      size: [80, 100]
+      x: [0.48, 0.52],
+      y: [0.35, 0.4],
+      size: [30, 40]
     },
 
+    fadeOut: true,
+
     motion: {
-      type: "linear"
+      type: "linear",
+      rotate: false,
+      float: false
     }
   },
 
   surprised_fish: {
-    tiktokName: "Surprised Fish",
     image: "Surprised_Fish.png",
-
-    countLimit: 20,
-    duration: 3500,
+    countLimit: 15,
+    duration: 5000,
 
     start: {
-      x: [0.3, 0.7],
-      y: [0.6, 0.8],
-      size: [90, 110]
+      x: [-0.1, -0.05],
+      y: [0.4, 0.6],
+      size: [100, 120]
     },
 
     end: {
-      x: [0.45, 0.55],
-      y: [0.2, 0.4],
-      size: [140, 160]
+      x: [1.05, 1.1],
+      y: [0.4, 0.6],
+      size: [100, 120]
     },
 
+    fadeOut: false,
+
     motion: {
-      type: "easeOut"
+      type: "easeOut",
+      rotate: true,
+      float: true
     }
   }
 };
 
 /* ==============================
-   🔧 共通ユーティリティ
+   🔧 ユーティリティ
 ================================ */
 const rand = (a, b) => Math.random() * (b - a) + a;
 
@@ -87,11 +90,11 @@ function easing(type, t) {
   if (type === "easeOut") {
     return 1 - Math.pow(1 - t, 3);
   }
-  return t; // linear
+  return t;
 }
 
 /* ==============================
-   📥 URLパラメータ取得
+   📥 URLパラメータ
 ================================ */
 const params = new URLSearchParams(location.search);
 const giftKey = params.get("gift") || "baseball";
@@ -103,8 +106,8 @@ const COUNT = Math.min(rawCount, effect.countLimit);
 /* ==============================
    🖥 画面サイズ
 ================================ */
-const W = document.documentElement.clientWidth;
-const H = document.documentElement.clientHeight;
+const W = window.innerWidth;
+const H = window.innerHeight;
 
 /* ==============================
    🎨 アイテム生成
@@ -116,7 +119,8 @@ for (let i = 0; i < COUNT; i++) {
   img.src = effect.image;
   img.className = "effect-item";
 
-  const startSize = rand(...effect.start.size);
+  const ss = rand(...effect.start.size);
+  const es = rand(...effect.end.size);
 
   const item = {
     el: img,
@@ -127,13 +131,14 @@ for (let i = 0; i < COUNT; i++) {
     ex: rand(effect.end.x[0] * W, effect.end.x[1] * W),
     ey: rand(effect.end.y[0] * H, effect.end.y[1] * H),
 
-    ss: startSize,
-    es: rand(...effect.end.size)
+    ss, es,
+    rotBase: rand(-15, 15),
+    floatPhase: Math.random() * Math.PI * 2
   };
 
   img.style.left = item.sx + "px";
-  img.style.top  = item.sy + "px";
-  img.style.width = startSize + "px";
+  img.style.top = item.sy + "px";
+  img.style.width = ss + "px";
 
   document.body.appendChild(img);
   items.push(item);
@@ -149,18 +154,31 @@ function animate(now) {
   const p = easing(effect.motion.type, t);
 
   items.forEach(it => {
-    const x = it.sx + (it.ex - it.sx) * p;
-    const y = it.sy + (it.ey - it.sy) * p;
-    const size = it.ss + (it.es - it.ss) * p;
+    let x = it.sx + (it.ex - it.sx) * p;
+    let y = it.sy + (it.ey - it.sy) * p;
+    let size = it.ss + (it.es - it.ss) * p;
 
-    it.el.style.left = x + "px";
-    it.el.style.top  = y + "px";
+    let rotate = 0;
+    let floatY = 0;
+
+    if (effect.motion.rotate) {
+      rotate = it.rotBase + Math.sin(t * 6) * 10;
+    }
+
+    if (effect.motion.float) {
+      floatY = Math.sin(t * 8 + it.floatPhase) * 15;
+    }
+
+    it.el.style.transform =
+      `translate(${x}px, ${y + floatY}px) rotate(${rotate}deg)`;
     it.el.style.width = size + "px";
+
+    if (effect.fadeOut) {
+      it.el.style.opacity = 1 - t;
+    }
   });
 
-  if (t < 1) {
-    requestAnimationFrame(animate);
-  }
+  if (t < 1) requestAnimationFrame(animate);
 }
 
 requestAnimationFrame(animate);
