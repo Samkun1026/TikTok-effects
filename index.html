@@ -32,7 +32,7 @@ const GIFT_EFFECTS = {
     image: "Baseball.png",
     countLimit: 20,
     duration: 3000,
-    spawnInterval: 120,
+    spawnInterval: 120, // ← ここで出るテンポ調整
 
     start: {
       x: [0.4, 0.6],
@@ -57,7 +57,7 @@ const GIFT_EFFECTS = {
 
   surprised_fish: {
     image: "Surprised_Fish.png",
-    countLimit: 15,
+    countLimit: 30,
     duration: 5000,
     spawnInterval: 200,
 
@@ -106,9 +106,9 @@ const effect = GIFT_EFFECTS[giftKey] || GIFT_EFFECTS.baseball;
 const COUNT = Math.min(rawCount, effect.countLimit);
 
 /* ==============================
-   🖥 画面サイズ（←横幅 +320px）
+   🖥 画面サイズ
 ================================ */
-const W = window.innerWidth + 320; // ★ここが変更点
+const W = window.innerWidth;
 const H = window.innerHeight;
 
 /* ==============================
