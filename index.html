@@ -56,6 +56,19 @@ const GIFT_EFFECTS = {
     spawnInterval: 0,
     start: { sizeRatio: [0.11, 0.11] }
   },
+  
+  Popular_Vote: {
+  image: "popular_vote.png",
+  type: "curve",
+  countLimit: 30,
+  duration: 9000,
+  spawnInterval: 180,
+  start: {
+    x: [-0.15, -0.05],
+    y: [0.75, 0.9],
+    sizeRatio: [0.07, 0.085]
+  }
+},
 
   baseball: {
     image: "Baseball.png",
@@ -204,6 +217,50 @@ function animate(now) {
       }
     
       rotate = swayRot;
+    }
+
+    /* ===== curve（Popular Vote） ===== */
+    if (effect.type === "curve") {
+      const LOOP_TIME = total / 2;
+      const lt = (elapsed % LOOP_TIME) / LOOP_TIME;
+      const p = easeOutExpo(lt);
+    
+      let sx, sy, ex, ey;
+    
+      if (it.loop % 2 === 0) {
+        sx = it.sx;
+        sy = it.sy;
+        ex = it.cx1;
+        ey = it.cy1;
+      } else {
+        sx = it.cx1;
+        sy = it.cy1;
+        ex = it.cx2;
+        ey = it.cy2;
+      }
+    
+      // 二次関数（右に開く）
+      const mx = (sx + ex) / 2;
+      const my = Math.min(sy, ey) - 120;
+    
+      const x1 = sx + (mx - sx) * p;
+      const y1 = sy + (my - sy) * p;
+    
+      const x2 = mx + (ex - mx) * p;
+      const y2 = my + (ey - my) * p;
+    
+      x = x1 + (x2 - x1) * p;
+      y = y1 + (y2 - y1) * p;
+    
+      rotate = Math.sin(lt * 6 + it.phase) * 10;
+    
+      if (lt >= 0.99) it.loop++;
+    
+      // 画面外で消滅
+      if (x > W + 150 || y < -150) {
+        it.el.remove();
+        it.dead = true;
+      }
     }
 
     /* ===== throw（原型そのまま） ===== */
