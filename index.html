@@ -47,28 +47,6 @@ const GIFT_EFFECTS = {
     spawnInterval: 0,
     start: { sizeRatio: [0.15, 0.15] }
   },
-  
-  cool_love: {
-    image: "Cool_love.png",
-    type: "pop",
-    countLimit: 1,
-    duration: 4000,
-    spawnInterval: 0,
-    start: { sizeRatio: [0.11, 0.11] }
-  },
-  
-  popular_vote: {
-    image: "Popular_Vote.png",
-    type: "curve",
-    countLimit: 30,
-    duration: 9000,
-    spawnInterval: 180,
-    start: {
-      x: [-0.15, -0.05],
-      y: [0.75, 0.9],
-      sizeRatio: [0.07, 0.085]
-    }
-  },
 
   baseball: {
     image: "Baseball.png",
@@ -104,6 +82,19 @@ const GIFT_EFFECTS = {
       y: [0.25, 0.6],
       sizeRatio: [0.05, 0.06]
     }
+  },
+
+  popular_vote: {
+    image: "popular_vote.png",
+    type: "curve",
+    countLimit: 20,
+    duration: 6000,
+    spawnInterval: 180,
+    start: {
+      x: [-0.15, -0.05],
+      y: [0.75, 0.85],
+      sizeRatio: [0.1, 0.12]
+    }
   }
 };
 
@@ -138,7 +129,7 @@ const W = stage.clientWidth;
 const H = stage.clientHeight;
 
 /* ==============================
-   アイテム生成（乱数はここだけ）
+   spawnItem（※未改造）
 ================================ */
 const items = [];
 
@@ -177,7 +168,6 @@ for (let i = 0; i < COUNT; i++) {
   setTimeout(spawnItem, i * effect.spawnInterval);
 }
 
-
 /* ==============================
    🎞 アニメーション
 ================================ */
@@ -194,77 +184,26 @@ function animate(now) {
     let size = it.ss;
     let rotate = 0;
 
-    /* ===== pop（新仕様・常時揺れ） ===== */
+    /* ===== pop ===== */
     if (effect.type === "pop") {
-    
-      // 共通の揺れ（描画中ずっと）
-      const floatY = Math.sin(t * 8 + it.phase) * 18;
-      const swayRot = Math.sin(t * 6 + it.phase) * 8;
-    
       if (t < 0.2) {
         const p = easeOutExpo(t / 0.2);
         x = W / 2;
-        y = H + (H / 2 - H) * p + floatY;
-      }
-      else if (t < 0.8) {
+        y = H + (H / 2 - H) * p;
+      } else if (t < 0.8) {
+        const f = (t - 0.2) / 0.6;
         x = W / 2;
-        y = H / 2 + floatY;
-      }
-      else {
+        y = H / 2 + Math.sin(f * 4 + it.phase) * 20;
+        rotate = Math.sin(f * 4 + it.phase) * 10;
+      } else {
         const p = (t - 0.8) / 0.2;
         x = W / 2;
-        y = H / 2 + easeOutExpo(p) * (H / 2 + 200) + floatY;
+        y = H / 2 + easeOutExpo(p) * (H / 2 + 200);
         it.el.style.opacity = 1 - p;
       }
-    
-      rotate = swayRot;
     }
 
-    /* ===== curve（Popular Vote） ===== */
-    if (effect.type === "curve") {
-      const LOOP_TIME = total / 2;
-      const lt = (elapsed % LOOP_TIME) / LOOP_TIME;
-      const p = easeOutExpo(lt);
-    
-      let sx, sy, ex, ey;
-    
-      if (it.loop % 2 === 0) {
-        sx = it.sx;
-        sy = it.sy;
-        ex = it.cx1;
-        ey = it.cy1;
-      } else {
-        sx = it.cx1;
-        sy = it.cy1;
-        ex = it.cx2;
-        ey = it.cy2;
-      }
-    
-      // 二次関数（右に開く）
-      const mx = (sx + ex) / 2;
-      const my = Math.min(sy, ey) - 120;
-    
-      const x1 = sx + (mx - sx) * p;
-      const y1 = sy + (my - sy) * p;
-    
-      const x2 = mx + (ex - mx) * p;
-      const y2 = my + (ey - my) * p;
-    
-      x = x1 + (x2 - x1) * p;
-      y = y1 + (y2 - y1) * p;
-    
-      rotate = Math.sin(lt * 6 + it.phase) * 10;
-    
-      if (lt >= 0.99) it.loop++;
-    
-      // 画面外で消滅
-      if (x > W + 150 || y < -150) {
-        it.el.remove();
-        it.dead = true;
-      }
-    }
-
-    /* ===== throw（原型そのまま） ===== */
+    /* ===== throw（原型） ===== */
     if (effect.type === "throw") {
       if (elapsed < CHARGE_TIME) {
         const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
@@ -300,7 +239,7 @@ function animate(now) {
       if (t > 0.85) it.el.style.opacity = 1 - (t - 0.85) / 0.15;
     }
 
-    /* ===== float（原型そのまま） ===== */
+    /* ===== float（原型） ===== */
     if (effect.type === "float") {
       x = it.sx + (it.ex - it.sx) * t;
       y = it.sy + Math.sin(t * 6 + it.phase) * 20;
@@ -308,12 +247,57 @@ function animate(now) {
       if (t > 0.85) it.el.style.opacity = 1 - (t - 0.85) / 0.15;
     }
 
+    /* ===== curve（Popular_Vote） ===== */
+    if (effect.type === "curve") {
+
+      if (!it.curveInit) {
+        it.cx1 = rand(0.45 * W, 0.55 * W);
+        it.cy1 = rand(0.45 * H, 0.6 * H);
+        it.cx2 = rand(0.85 * W, 1.05 * W);
+        it.cy2 = rand(0.05 * H, 0.25 * H);
+        it.loop = 0;
+        it.curveInit = true;
+      }
+
+      const LOOP = total / 2;
+      const local = (elapsed % LOOP) / LOOP;
+      const p = easeOutExpo(local);
+
+      let sx, sy, ex, ey;
+      if (it.loop % 2 === 0) {
+        sx = it.sx; sy = it.sy;
+        ex = it.cx1; ey = it.cy1;
+      } else {
+        sx = it.cx1; sy = it.cy1;
+        ex = it.cx2; ey = it.cy2;
+      }
+
+      const mx = (sx + ex) / 2;
+      const my = Math.min(sy, ey) - 140;
+
+      const x1 = sx + (mx - sx) * p;
+      const y1 = sy + (my - sy) * p;
+      const x2 = mx + (ex - mx) * p;
+      const y2 = my + (ey - my) * p;
+
+      x = x1 + (x2 - x1) * p;
+      y = y1 + (y2 - y1) * p;
+
+      rotate = Math.sin(local * 6 + it.phase) * 10;
+
+      if (local > 0.99) it.loop++;
+
+      if (x > W + 200 || y < -200) {
+        it.el.remove();
+        it.dead = true;
+      }
+    }
+
     it.el.style.transform =
       `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${rotate}deg)`;
     it.el.style.width = size + "px";
 
-    /* ===== 完全削除 ===== */
-    if (elapsed > total) {
+    if (elapsed > total && effect.type !== "curve") {
       it.el.remove();
       it.dead = true;
     }
