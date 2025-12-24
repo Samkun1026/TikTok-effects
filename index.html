@@ -14,14 +14,26 @@ html, body {
   overflow: hidden;
 }
 
+/* ★ 演出用ステージ */
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: calc(100% + 320px); /* ← 本当に広げる */
+  height: 100%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .effect-item {
   position: absolute;
-  pointer-events: none;
   will-change: transform, opacity;
 }
 </style>
 </head>
 <body>
+
+<div id="stage"></div>
 
 <script>
 /* ==============================
@@ -35,21 +47,21 @@ const GIFT_EFFECTS = {
     spawnInterval: 120,
 
     start: {
-      x: [0.225, 0.275],
-      y: [0.44, 0.46],
-      size: [200, 240]
+      x: [0.40, 0.60],
+      y: [0.85, 0.88],
+      size: [220, 240]
     },
 
     end: {
-      x: [0.245, 0.265],
-      y: [0.20, 0.25],
+      x: [0.49, 0.51],
+      y: [0.30, 0.35],
       size: [30, 40]
     },
 
     fadeOut: true,
 
     motion: {
-      type: "easeOut",   // ★ 奥行き感
+      type: "easeOut",
       rotate: false,
       float: false
     }
@@ -68,7 +80,7 @@ const GIFT_EFFECTS = {
     },
 
     end: {
-      x: [1.7, 1.75],
+      x: [1.05, 1.2],
       y: [0.2, 0.3],
       size: [60, 80]
     },
@@ -84,35 +96,34 @@ const GIFT_EFFECTS = {
 };
 
 /* ==============================
-   🔧 ユーティリティ
+   ユーティリティ
 ================================ */
 const rand = (a, b) => Math.random() * (b - a) + a;
 
 function easing(type, t) {
-  if (type === "easeOut") {
-    return 1 - Math.pow(1 - t, 3);
-  }
+  if (type === "easeOut") return 1 - Math.pow(1 - t, 3);
   return t;
 }
 
 /* ==============================
-   📥 URLパラメータ
+   URLパラメータ
 ================================ */
 const params = new URLSearchParams(location.search);
 const giftKey = params.get("gift") || "baseball";
 const rawCount = parseInt(params.get("n")) || 1;
 
-const effect = GIFT_EFFECTS[giftKey] || GIFT_EFFECTS.baseball;
+const effect = GIFT_EFFECTS[giftKey];
 const COUNT = Math.min(rawCount, effect.countLimit);
 
 /* ==============================
-   🖥 画面サイズ
+   ステージサイズ
 ================================ */
-const W = window.innerWidth + 320;
-const H = window.innerHeight;
+const stage = document.getElementById("stage");
+const W = stage.clientWidth;
+const H = stage.clientHeight;
 
 /* ==============================
-   🎨 アイテム生成（時間差）
+   生成
 ================================ */
 const items = [];
 
@@ -134,13 +145,12 @@ function spawnItem() {
     ex: rand(effect.end.x[0] * W, effect.end.x[1] * W),
     ey: rand(effect.end.y[0] * H, effect.end.y[1] * H),
 
-    ss,
-    es,
+    ss, es,
     rotBase: rand(-15, 15),
     floatPhase: Math.random() * Math.PI * 2
   };
 
-  document.body.appendChild(img);
+  stage.appendChild(img);
   items.push(item);
 }
 
@@ -149,7 +159,7 @@ for (let i = 0; i < COUNT; i++) {
 }
 
 /* ==============================
-   🎞 アニメーション
+   アニメーション
 ================================ */
 function animate(now) {
   items.forEach(it => {
@@ -163,20 +173,20 @@ function animate(now) {
     let rotate = 0;
     let floatY = 0;
 
-    if (effect.motion.rotate) {
+    if (effect.motion.rotate)
       rotate = it.rotBase + Math.sin(t * 6) * 10;
-    }
 
-    if (effect.motion.float) {
+    if (effect.motion.float)
       floatY = Math.sin(t * 8 + it.floatPhase) * 15;
-    }
 
     it.el.style.transform =
       `translate(${x}px, ${y + floatY}px) rotate(${rotate}deg)`;
     it.el.style.width = size + "px";
 
     if (effect.fadeOut) {
-      it.el.style.opacity = 1 - t;
+      const fadeStart = 0.8;
+      it.el.style.opacity =
+        t < fadeStart ? 1 : (1 - (t - fadeStart) / (1 - fadeStart));
     }
   });
 
