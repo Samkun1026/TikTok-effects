@@ -169,50 +169,54 @@ function animate(now) {
     /* ===== 投擲系（野球ボール） ===== */
     if (effect.type === "throw") {
 
-      /* 溜め */
-      if (elapsed < CHARGE_TIME) {
-        const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
-        x = it.sx + shake;
-        y = it.sy;
-        size = it.ss;
-        rotate = it.rotBase + shake * 0.5;
-      }
+  /* ===== 溜め ===== */
+  if (elapsed < CHARGE_TIME) {
+    const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
+    x = it.sx + shake;
+    y = it.sy;
+    size = it.ss;
+    rotate = it.rotBase + shake * 0.5;
+  }
 
-      /* 投擲〜着弾 */
-      else {
-        const throwT = Math.min(
-          (elapsed - CHARGE_TIME) / (total - CHARGE_TIME),
-          1
-        );
-        const p = easeOutExpo(throwT);
+  /* ===== 投擲〜着弾 ===== */
+  else {
+    const throwT = Math.min(
+      (elapsed - CHARGE_TIME) / (total - CHARGE_TIME),
+      1
+    );
+    const p = easeOutExpo(throwT);
 
-        /* 投擲中 */
-        if (p < 0.85) {
-          x = it.sx + (it.ex - it.sx) * p;
-          y = it.sy + (it.ey - it.sy) * p;
-          size = it.ss + (it.es - it.ss) * p;
-          rotate = it.rotBase + (1 - p) * 360;
-        }
-
-        /* 着弾 */
-        else {
-          if (it.impactY === null) {
-            it.impactY = it.sy + (it.ey - it.sy) * 0.85;
-          }
-
-          const impactT = (p - 0.85) / 0.15;
-
-          x = it.ex;
-
-          const jump = -IMPACT_BOUNCE * (1 - impactT);
-          const gravity = impactT * impactT * IMPACT_BOUNCE;
-
-          y = it.impactY + jump + gravity;
-          size = it.es * (1 - impactT);
-          rotate = 0;
-        }
-      }
+    /* ===== 投擲中 ===== */
+    if (p < 0.85 && it.state !== "fall") {
+      x = it.sx + (it.ex - it.sx) * p;
+      y = it.sy + (it.ey - it.sy) * p;
+      size = it.ss + (it.es - it.ss) * p;
+      rotate = it.rotBase + (1 - p) * 360;
     }
+
+    /* ===== 着弾 → 落下開始 ===== */
+    else {
+      if (it.state !== "fall") {
+        // 着弾した瞬間の初期化
+        it.state = "fall";
+        it.x = it.ex;
+        it.y = it.ey;
+        it.vy = -IMPACT_BOUNCE * 0.6; // ぴょん
+        size = it.es;
+        rotate = 0;
+      }
+
+      // 重力
+      it.vy += 1.2;
+      it.y += it.vy;
+
+      x = it.x;
+      y = it.y;
+      size = it.es;
+      rotate = 0;
+    }
+  }
+}
 
     /* ===== 浮遊系（魚） ===== */
     if (effect.type === "float") {
