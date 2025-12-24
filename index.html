@@ -2,28 +2,59 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ball test</title>
+<title>ball move test</title>
 <style>
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
+  background: transparent;   /* ← 透明 */
+  overflow: hidden;
 }
-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #222; /* 見やすさ用（後で消す） */
-}
-img {
-  width: 200px;
+
+/* 画像1個だけ */
+#ball {
+  position: absolute;
+  width: 120px;
+  left: 50%;
+  top: 70%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 </style>
 </head>
 <body>
 
-<img src="Baseball.png" alt="baseball">
+<img id="ball" src="Baseball.png" alt="baseball">
+
+<script>
+const ball = document.getElementById("ball");
+
+// 開始位置
+let x = window.innerWidth / 2;
+let y = window.innerHeight * 0.7;
+
+// 速度（確認しやすい値）
+let vx = 2.5;
+let vy = -2.0;
+
+function animate() {
+  x += vx;
+  y += vy;
+
+  // 画面外に出たら反射（見失わないため）
+  if (x < 0 || x > window.innerWidth) vx *= -1;
+  if (y < 0 || y > window.innerHeight) vy *= -1;
+
+  ball.style.left = x + "px";
+  ball.style.top  = y + "px";
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
 
 </body>
 </html>
