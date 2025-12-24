@@ -161,20 +161,38 @@ function spawnItem() {
     rotBase: rand(-25, 25),
     dead: false,
 
-    sx: effect.start.x ? rand(effect.start.x[0] * W, effect.start.x[1] * W) : W / 2,
-    sy: effect.start.y ? rand(effect.start.y[0] * H, effect.start.y[1] * H) : H,
-    ex: effect.end?.x ? rand(effect.end.x[0] * W, effect.end.x[1] * W) : W / 2,
-    ey: effect.end?.y ? rand(effect.end.y[0] * H, effect.end.y[1] * H) : H / 2
+    sx: effect.start.x
+      ? rand(effect.start.x[0] * W, effect.start.x[1] * W)
+      : W / 2,
+    sy: effect.start.y
+      ? rand(effect.start.y[0] * H, effect.start.y[1] * H)
+      : H,
+    ex: effect.end?.x
+      ? rand(effect.end.x[0] * W, effect.end.x[1] * W)
+      : W / 2,
+    ey: effect.end?.y
+      ? rand(effect.end.y[0] * H, effect.end.y[1] * H)
+      : H / 2
   };
+
+  /* ===== Popular_Vote（curve）用追加 ===== */
+  if (effect.type === "curve") {
+    // 中継ポイント①（中央付近）
+    item.cx1 = rand(0.45 * W, 0.55 * W);
+    item.cy1 = rand(0.45 * H, 0.6 * H);
+
+    // 中継ポイント②（右上付近）
+    item.cx2 = rand(0.85 * W, 1.05 * W);
+    item.cy2 = rand(0.05 * H, 0.25 * H);
+
+    // どのカーブ段か
+    item.loop = 0;
+  }
 
   img.style.width = ss + "px";
   img.style.opacity = 1;
   stage.appendChild(img);
   items.push(item);
-}
-
-for (let i = 0; i < COUNT; i++) {
-  setTimeout(spawnItem, i * effect.spawnInterval);
 }
 
 /* ==============================
