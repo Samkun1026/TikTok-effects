@@ -171,23 +171,30 @@ function animate(now) {
     let size = it.ss;
     let rotate = 0;
 
-    /* ===== pop（新仕様） ===== */
+    /* ===== pop（新仕様・常時揺れ） ===== */
     if (effect.type === "pop") {
+    
+      // 共通の揺れ（描画中ずっと）
+      const floatY = Math.sin(t * 8 + it.phase) * 18;
+      const swayRot = Math.sin(t * 6 + it.phase) * 8;
+    
       if (t < 0.2) {
         const p = easeOutExpo(t / 0.2);
         x = W / 2;
-        y = H + (H / 2 - H) * p;
-      } else if (t < 0.8) {
-        const f = (t - 0.2) / 0.6;
+        y = H + (H / 2 - H) * p + floatY;
+      }
+      else if (t < 0.8) {
         x = W / 2;
-        y = H / 2 + Math.sin(f * 4 + it.phase) * 20;
-        rotate = Math.sin(f * 2 + it.phase) * 8;
-      } else {
+        y = H / 2 + floatY;
+      }
+      else {
         const p = (t - 0.8) / 0.2;
         x = W / 2;
-        y = H / 2 + easeOutExpo(p) * (H / 2 + 200);
+        y = H / 2 + easeOutExpo(p) * (H / 2 + 200) + floatY;
         it.el.style.opacity = 1 - p;
       }
+    
+      rotate = swayRot;
     }
 
     /* ===== throw（原型そのまま） ===== */
