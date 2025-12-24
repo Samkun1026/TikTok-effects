@@ -32,12 +32,12 @@ const GIFT_EFFECTS = {
     image: "Baseball.png",
     countLimit: 20,
     duration: 3000,
-    spawnInterval: 120, // ← ここで出るテンポ調整
+    spawnInterval: 120,
 
     start: {
       x: [0.225, 0.275],
       y: [0.44, 0.46],
-      size: [120, 140]
+      size: [200, 240]
     },
 
     end: {
@@ -49,7 +49,7 @@ const GIFT_EFFECTS = {
     fadeOut: true,
 
     motion: {
-      type: "linear",
+      type: "easeOut",   // ★ 奥行き感
       rotate: false,
       float: false
     }
@@ -76,7 +76,7 @@ const GIFT_EFFECTS = {
     fadeOut: false,
 
     motion: {
-      type: "easeOut",
+      type: "linear",
       rotate: true,
       float: true
     }
@@ -140,10 +140,6 @@ function spawnItem() {
     floatPhase: Math.random() * Math.PI * 2
   };
 
-  img.style.left = item.sx + "px";
-  img.style.top = item.sy + "px";
-  img.style.width = ss + "px";
-
   document.body.appendChild(img);
   items.push(item);
 }
@@ -160,9 +156,9 @@ function animate(now) {
     const t = Math.min((now - it.startTime) / effect.duration, 1);
     const p = easing(effect.motion.type, t);
 
-    let x = it.sx + (it.ex - it.sx) * p;
-    let y = it.sy + (it.ey - it.sy) * p;
-    let size = it.ss + (it.es - it.ss) * p;
+    const x = it.sx + (it.ex - it.sx) * p;
+    const y = it.sy + (it.ey - it.sy) * p;
+    const size = it.ss + (it.es - it.ss) * p;
 
     let rotate = 0;
     let floatY = 0;
