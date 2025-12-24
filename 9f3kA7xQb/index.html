@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Baseball Effect</title>
+<style>
+  html, body {
+    margin: 0;
+    background: transparent;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const params = new URLSearchParams(location.search);
+const COUNT = Math.min(parseInt(params.get("n")) || 1, 50);
+const DURATION = 3000;
+const RADIUS = 18;
+
+const rand = (a, b) => Math.random() * (b - a) + a;
+
+const balls = [];
+for (let i = 0; i < COUNT; i++) {
+  balls.push({
+    sx: rand(0.2, 0.8) * canvas.width,
+    sy: rand(0.7, 0.9) * canvas.height,
+    ex: rand(0, 1) * canvas.width,
+    ey: rand(0, 0.3) * canvas.height
+  });
+}
+
+const start = performance.now();
+
+function draw(now) {
+  const p = Math.min((now - start) / DURATION, 1);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  balls.forEach(b => {
+    const x = b.sx + (b.ex - b.sx) * p;
+    const y = b.sy + (b.ey - b.sy) * p;
+
+    ctx.beginPath();
+    ctx.arc(x, y, RADIUS, 0, Math.PI * 2);
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  if (p < 1) requestAnimationFrame(draw);
+}
+
+requestAnimationFrame(draw);
+</script>
+
+</body>
+</html>
