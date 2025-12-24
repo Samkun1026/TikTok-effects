@@ -18,7 +18,7 @@ html, body {
   position: absolute;
   left: 50%;
   top: 0;
-  width: calc(100% + 320px);
+  width: calc(100% + 320px); /* 横幅拡張 */
   height: 100%;
   transform: translateX(-50%);
   pointer-events: none;
@@ -26,7 +26,7 @@ html, body {
 
 .effect-item {
   position: absolute;
-  will-change: transform, opacity;
+  will-change: transform;
 }
 </style>
 </head>
@@ -36,7 +36,7 @@ html, body {
 
 <script>
 /* ==============================
-   🎁 ギフト演出 定義（比率サイズ）
+   🎁 ギフト定義
 ================================ */
 const GIFT_EFFECTS = {
   baseball: {
@@ -48,61 +48,37 @@ const GIFT_EFFECTS = {
     start: {
       x: [0.48, 0.52],
       y: [0.85, 0.88],
-      sizeRatio: [0.15, 0.175]
+      sizeRatio: [0.06, 0.075]
     },
 
     end: {
       x: [0.49, 0.51],
       y: [0.30, 0.35],
       sizeRatio: [0.015, 0.02]
-    },
-
-    fadeOut: true,
-
-    motion: {
-      type: "easeOut",
-      rotate: true,
-      float: false
-    }
-  },
-
-  surprised_fish: {
-    image: "Surprised_Fish.png",
-    countLimit: 50,
-    duration: 5000,
-    spawnInterval: 120,
-
-    start: {
-      x: [-0.1, -0.05],
-      y: [0.2, 0.3],
-      sizeRatio: [0.04, 0.05]
-    },
-
-    end: {
-      x: [1.05, 1.2],
-      y: [0.2, 0.3],
-      sizeRatio: [0.04, 0.05]
-    },
-
-    fadeOut: false,
-
-    motion: {
-      type: "linear",
-      rotate: true,
-      float: true
     }
   }
 };
 
 /* ==============================
+   🔧 定数
+================================ */
+const CHARGE_TIME = 500;       // 溜め時間(ms)
+const SHAKE_POWER = 8;        // プルプル幅
+const IMPACT_BOUNCE = 30;     // 着弾ジャンプ
+const DIR_VARIANCE = 0.05;    // 投げ方向ブレ率
+
+/* ==============================
    ユーティリティ
 ================================ */
 const rand = (a, b) => Math.random() * (b - a) + a;
-const easing = (type, t) =>
-  type === "easeOut" ? 1 - Math.pow(1 - t, 3) : t;
+
+function easeOutExpo(t) {
+  return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+}
 
 /* ==============================
    URLパラメータ
+   ?gift=baseball&n=10
 ================================ */
 const params = new URLSearchParams(location.search);
 const giftKey = params.get("gift") || "baseball";
@@ -119,7 +95,7 @@ const W = stage.clientWidth;
 const H = stage.clientHeight;
 
 /* ==============================
-   生成
+   アイテム生成
 ================================ */
 const items = [];
 
@@ -131,19 +107,24 @@ function spawnItem() {
   const ss = rand(...effect.start.sizeRatio) * W;
   const es = rand(...effect.end.sizeRatio) * W;
 
+  const offset = (items.length % 5) * 18 - 36;
+
+  const dirShiftX = rand(-DIR_VARIANCE, DIR_VARIANCE) * W;
+  const dirShiftY = rand(-DIR_VARIANCE, DIR_VARIANCE) * H;
+
   const item = {
     el: img,
     startTime: performance.now(),
 
-    sx: rand(effect.start.x[0] * W, effect.start.x[1] * W),
+    sx: rand(effect.start.x[0] * W, effect.start.x[1] * W) + offset,
     sy: rand(effect.start.y[0] * H, effect.start.y[1] * H),
 
-    ex: rand(effect.end.x[0] * W, effect.end.x[1] * W),
-    ey: rand(effect.end.y[0] * H, effect.end.y[1] * H),
+    ex: rand(effect.end.x[0] * W, effect.end.x[1] * W) + dirShiftX,
+    ey: rand(effect.end.y[0] * H, effect.end.y[1] * H) + dirShiftY,
 
-    ss, es,
-    rotBase: rand(-15, 15),
-    floatPhase: Math.random() * Math.PI * 2
+    ss,
+    es,
+    rotBase: rand(-25, 25)
   };
 
   img.style.width = ss + "px";
@@ -156,46 +137,57 @@ for (let i = 0; i < COUNT; i++) {
 }
 
 /* ==============================
-   アニメーション
+   🎞 アニメーション
 ================================ */
 function animate(now) {
   items.forEach(it => {
     const elapsed = now - it.startTime;
-    const t = Math.min(elapsed / effect.duration, 1);
+    const total = effect.duration;
 
-    let x, y, size;
+    let x, y, size, rotate = 0;
 
-    /* ========= ① 溜め ========= */
-    if (elapsed < 500) {
-      const shake = Math.sin(elapsed / 50) * 8;
+    /* ① 溜め（プルプル） */
+    if (elapsed < CHARGE_TIME) {
+      const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
       x = it.sx + shake;
       y = it.sy;
       size = it.ss;
+      rotate = it.rotBase + shake * 0.5;
     }
 
-    /* ========= ② 投擲 ========= */
+    /* ② 投擲 */
     else {
-      const throwT = (elapsed - 500) / (effect.duration - 500);
-      const p = easeOutExpo(Math.min(throwT, 1));
+      const throwT = Math.min(
+        (elapsed - CHARGE_TIME) / (total - CHARGE_TIME),
+        1
+      );
+
+      const p = easeOutExpo(throwT);
 
       x = it.sx + (it.ex - it.sx) * p;
       y = it.sy + (it.ey - it.sy) * p;
       size = it.ss + (it.es - it.ss) * p;
 
-      /* ========= ③ 着弾 ========= */
+      /* 回転（投擲中のみ） */
+      if (p < 0.85) {
+        rotate = it.rotBase + (1 - p) * 360;
+      }
+
+      /* ③ 着弾バウンド */
       if (p > 0.85) {
         const impactT = (p - 0.85) / 0.15;
-        y += Math.sin(impactT * Math.PI) * -30;
+        y += Math.sin(impactT * Math.PI) * -IMPACT_BOUNCE;
+        rotate = 0;
       }
     }
 
-    it.el.style.transform = `translate(${x}px, ${y}px)`;
+    it.el.style.transform =
+      `translate(${x}px, ${y}px) rotate(${rotate}deg)`;
     it.el.style.width = size + "px";
   });
 
   requestAnimationFrame(animate);
 }
-
 
 requestAnimationFrame(animate);
 </script>
