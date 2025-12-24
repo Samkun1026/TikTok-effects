@@ -42,20 +42,20 @@ const GIFT_EFFECTS = {
   baseball: {
     image: "Baseball.png",
     type: "throw",
-    countLimit: 15,
-    duration: 3000,
+    countLimit: 20,
+    duration: 3200,
     spawnInterval: 120,
 
     start: {
       x: [0.48, 0.52],
       y: [0.85, 0.88],
-      sizeRatio: [0.15, 0.175]
+      sizeRatio: [0.06, 0.075]
     },
 
     end: {
       x: [0.49, 0.51],
-      y: [0.30, 0.35],
-      sizeRatio: [0.05, 0.075]
+      y: [0.32, 0.36],
+      sizeRatio: [0.015, 0.02]
     }
   },
 
@@ -64,18 +64,18 @@ const GIFT_EFFECTS = {
     type: "float",
     countLimit: 30,
     duration: 6000,
-    spawnInterval: 100,
+    spawnInterval: 150,
 
     start: {
-      x: [-0.1, -0.1],
-      y: [0.3, 0.6],
-      sizeRatio: [0.07, 0.08]
+      x: [-0.15, -0.05],
+      y: [0.25, 0.6],
+      sizeRatio: [0.05, 0.06]
     },
 
     end: {
-      x: [1.15, 1.15],
-      y: [0.3, 0.6],
-      sizeRatio: [0.07, 0.08]
+      x: [1.05, 1.15],
+      y: [0.25, 0.6],
+      sizeRatio: [0.05, 0.06]
     }
   }
 };
@@ -85,7 +85,7 @@ const GIFT_EFFECTS = {
 ================================ */
 const CHARGE_TIME = 500;
 const SHAKE_POWER = 8;
-const IMPACT_BOUNCE = 30;
+const IMPACT_BOUNCE = 32;
 const DIR_VARIANCE = 0.05;
 
 /* ==============================
@@ -99,7 +99,6 @@ function easeOutExpo(t) {
 
 /* ==============================
    URLパラメータ
-   ?gift=baseball&n=10
 ================================ */
 const params = new URLSearchParams(location.search);
 const giftKey = params.get("gift") || "baseball";
@@ -143,8 +142,9 @@ function spawnItem() {
     ss,
     es,
 
-    rotBase: rand(-20, 20),
-    floatPhase: Math.random() * Math.PI * 2
+    rotBase: rand(-25, 25),
+    floatPhase: Math.random() * Math.PI * 2,
+    impactY: null
   };
 
   img.style.width = ss + "px";
@@ -162,44 +162,61 @@ for (let i = 0; i < COUNT; i++) {
 function animate(now) {
   items.forEach(it => {
     const elapsed = now - it.startTime;
-    const t = Math.min(elapsed / effect.duration, 1);
+    const total = effect.duration;
 
     let x, y, size, rotate = 0;
 
-    /* ================= 投擲系（野球） ================= */
+    /* ===== 投擲系（野球ボール） ===== */
     if (effect.type === "throw") {
 
+      /* 溜め */
       if (elapsed < CHARGE_TIME) {
         const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
         x = it.sx + shake;
         y = it.sy;
         size = it.ss;
         rotate = it.rotBase + shake * 0.5;
-      } else {
+      }
+
+      /* 投擲〜着弾 */
+      else {
         const throwT = Math.min(
-          (elapsed - CHARGE_TIME) / (effect.duration - CHARGE_TIME),
+          (elapsed - CHARGE_TIME) / (total - CHARGE_TIME),
           1
         );
         const p = easeOutExpo(throwT);
 
-        x = it.sx + (it.ex - it.sx) * p;
-        y = it.sy + (it.ey - it.sy) * p;
-        size = it.ss + (it.es - it.ss) * p;
-
+        /* 投擲中 */
         if (p < 0.85) {
+          x = it.sx + (it.ex - it.sx) * p;
+          y = it.sy + (it.ey - it.sy) * p;
+          size = it.ss + (it.es - it.ss) * p;
           rotate = it.rotBase + (1 - p) * 360;
         }
 
-        if (p > 0.85) {
+        /* 着弾 */
+        else {
+          if (it.impactY === null) {
+            it.impactY = it.sy + (it.ey - it.sy) * 0.85;
+          }
+
           const impactT = (p - 0.85) / 0.15;
-          y += Math.sin(impactT * Math.PI) * -IMPACT_BOUNCE;
+
+          x = it.ex;
+
+          const jump = -IMPACT_BOUNCE * (1 - impactT);
+          const gravity = impactT * impactT * IMPACT_BOUNCE;
+
+          y = it.impactY + jump + gravity;
+          size = it.es * (1 - impactT);
           rotate = 0;
         }
       }
     }
 
-    /* ================= 浮遊系（魚） ================= */
+    /* ===== 浮遊系（魚） ===== */
     if (effect.type === "float") {
+      const t = Math.min(elapsed / total, 1);
       x = it.sx + (it.ex - it.sx) * t;
       y = it.sy + Math.sin(t * 6 + it.floatPhase) * 20;
       size = it.ss;
