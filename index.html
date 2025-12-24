@@ -219,23 +219,22 @@ function animate(now) {
       rotate = swayRot;
     }
 
-    /* ===== popular_vote（シンプル弧） ===== */
+    /* ===== popular_vote（シンプル弧・高速） ===== */
     if (effect.type === "popular") {
     
-      // 正規化時間（止まらず進行）
-      const p = elapsed / total;
+      const SPEED = 1.6;
+      const p = Math.min((elapsed / total) * SPEED, 1.2);
     
-      // X：左下 → 右上へ一直線
+      // X：左下 → 右上
       x = it.sx + (W * 0.75) * p;
     
-      // Y：必ず下から上に持ち上がる二次カーブ
-      // y = ap^2 + bp + c（下に凸）
+      // Y：必ず下から上に持ち上がる弧
       const curve = -180 * (p - 0.5) * (p - 0.5) + 45;
       y = it.sy - (H * 0.45) * p + curve;
     
       rotate = Math.sin(p * 4 + it.phase) * 6;
     
-      // 画面外に出たら削除
+      // 画面外で削除
       if (x > W + it.ss || y < -it.ss) {
         it.el.remove();
         it.dead = true;
