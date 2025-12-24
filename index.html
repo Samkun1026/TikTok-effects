@@ -60,15 +60,19 @@ const GIFT_EFFECTS = {
   popular_vote: {
     image: "Popular_Vote.png",
     type: "popular",
-    countLimit: 30,
-    duration: 12000,
-    spawnInterval: 200,
+    countLimit: 20,
+    duration: 6000,          // float相当
+    spawnInterval: 150,
     start: {
-      x: [0.04, 0.06],   // 左下・狭め
-      y: [0.78, 0.82],
-      sizeRatio: [0.09, 0.1]
+      x: [0.02, 0.06],       // 左下・狭め
+      y: [0.75, 0.85],
+      sizeRatio: [0.12, 0.12]
+    },
+    end: {
+      x: [0.45, 0.55],       // 真ん中付近
+      y: [-0.15, -0.05]     // 画面外で消す
     }
-  },
+  }
 
   baseball: {
     image: "Baseball.png",
@@ -219,25 +223,23 @@ function animate(now) {
       rotate = swayRot;
     }
 
-    /* ===== popular_vote（シンプル弧・高速） ===== */
+    /* ===== popular_vote（シンプル上向きカーブ） ===== */
     if (effect.type === "popular") {
     
-      const SPEED = 1.6;
-      const p = Math.min((elapsed / total) * SPEED, 1.2);
+      const p = Math.min(elapsed / total, 1);
     
-      // X：左下 → 右上
-      x = it.sx + (W * 0.75) * p;
+      // Xは直線
+      x = it.sx + (it.ex - it.sx) * p;
     
-      // Y：必ず下から上に持ち上がる弧
-      const curve = -180 * (p - 0.5) * (p - 0.5) + 45;
-      y = it.sy - (H * 0.45) * p + curve;
+      // Yは必ず下→上に膨らむ弧
+      const arc = Math.sin(p * Math.PI) * -200;
+      y = it.sy + (it.ey - it.sy) * p + arc;
     
-      rotate = Math.sin(p * 4 + it.phase) * 6;
+      rotate = 0;
     
-      // 画面外で削除
-      if (x > W + it.ss || y < -it.ss) {
-        it.el.remove();
-        it.dead = true;
+      // フェードアウト
+      if (p > 0.85) {
+        it.el.style.opacity = 1 - (p - 0.85) / 0.15;
       }
     }
 
