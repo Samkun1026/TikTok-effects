@@ -39,6 +39,20 @@ html, body {
    🎁 ギフト定義
 ================================ */
 const GIFT_EFFECTS = {
+  heart_me: {
+  image: "Heart_Me.png",
+  type: "pop",
+  countLimit: 10,
+  duration: 2500,
+  spawnInterval: 300,
+
+  start: {
+    // 画面中央ちょい下
+    x: [0.5, 0.5],
+    y: [0.55, 0.55],
+    sizeRatio: [0.08, 0.1]
+  }
+ },
   baseball: {
     image: "Baseball.png",
     type: "throw",
@@ -165,6 +179,38 @@ function animate(now) {
     const total = effect.duration;
 
     let x, y, size, rotate = 0;
+
+    /* ===== ポップ系（Heart Me / デフォルト） ===== */
+if (effect.type === "pop") {
+  const t = Math.min(elapsed / total, 1);
+
+  // 基準位置（画面中央）
+  const baseX = W * effect.start.x[0];
+  const baseY = H * effect.start.y[0];
+
+  // サイズ（固定）
+  size = it.ss;
+
+  // 左右ゆらゆら
+  rotate = Math.sin(t * 4 + it.floatPhase) * 10;
+
+  // 上下ぴょこ用オフセット
+  let popOffset = 0;
+
+  // 出現（下 → 定位置）
+  if (t < 0.2) {
+    const p = easeOutExpo(t / 0.2);
+    popOffset = (1 - p) * 40;
+  }
+  // 消滅（定位置 → 下）
+  else if (t > 0.8) {
+    const p = (t - 0.8) / 0.2;
+    popOffset = p * 40;
+  }
+
+  x = baseX;
+  y = baseY + popOffset;
+}
 
     /* ===== 投擲系（野球ボール） ===== */
     if (effect.type === "throw") {
