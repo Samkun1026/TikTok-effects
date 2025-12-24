@@ -18,7 +18,7 @@ html, body {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 100%;
+  width: calc(100% + 320px);
   height: 100%;
   transform: translateX(-50%);
   pointer-events: none;
@@ -45,9 +45,7 @@ const GIFT_EFFECTS = {
     countLimit: 1,
     duration: 4000,
     spawnInterval: 0,
-    start: {
-      sizeRatio: [0.15, 0.15]
-    }
+    start: { sizeRatio: [0.15, 0.15] }
   },
 
   baseball: {
@@ -58,13 +56,13 @@ const GIFT_EFFECTS = {
     spawnInterval: 120,
     start: {
       x: [0.48, 0.52],
-      y: [0.67, 0.7],
-      sizeRatio: [0.1, 0.12]
+      y: [0.67, 0.70],
+      sizeRatio: [0.1, 0.125]
     },
     end: {
       x: [0.35, 0.55],
       y: [0.2, 0.4],
-      sizeRatio: [0.05, 0.07]
+      sizeRatio: [0.05, 0.075]
     }
   },
 
@@ -76,39 +74,29 @@ const GIFT_EFFECTS = {
     spawnInterval: 150,
     start: {
       x: [-0.15, -0.05],
-      y: [0.3, 0.6],
+      y: [0.25, 0.6],
       sizeRatio: [0.05, 0.06]
     },
     end: {
       x: [1.05, 1.15],
-      y: [0.3, 0.6],
+      y: [0.25, 0.6],
       sizeRatio: [0.05, 0.06]
     }
   }
 };
 
 /* ==============================
-   揺れ量（型ごと固定）
+   定数（throw原型）
 ================================ */
-const SHAKE = {
-  pop: {
-    floatY: 20,
-    rotate: 8
-  },
-  throw: {
-    rotate: 360
-  },
-  float: {
-    floatY: 25,
-    rotate: 12
-  }
-};
+const CHARGE_TIME = 500;
+const SHAKE_POWER = 8;
+const IMPACT_BOUNCE = 32;
 
 /* ==============================
    ユーティリティ
 ================================ */
 const rand = (a, b) => Math.random() * (b - a) + a;
-const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeOutExpo = t => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
 /* ==============================
    URLパラメータ
@@ -137,23 +125,27 @@ function spawnItem() {
   img.src = effect.image;
   img.className = "effect-item";
 
-  const size = rand(...effect.start.sizeRatio) * W;
+  const ss = rand(...effect.start.sizeRatio) * W;
+  const es = effect.end?.sizeRatio
+    ? rand(...effect.end.sizeRatio) * W
+    : ss;
 
   const item = {
     el: img,
     startTime: performance.now(),
-    size,
+    ss,
+    es,
     phase: Math.random() * Math.PI * 2,
+    rotBase: rand(-25, 25),
     dead: false,
 
     sx: effect.start.x ? rand(effect.start.x[0] * W, effect.start.x[1] * W) : W / 2,
     sy: effect.start.y ? rand(effect.start.y[0] * H, effect.start.y[1] * H) : H,
-
     ex: effect.end?.x ? rand(effect.end.x[0] * W, effect.end.x[1] * W) : W / 2,
     ey: effect.end?.y ? rand(effect.end.y[0] * H, effect.end.y[1] * H) : H / 2
   };
 
-  img.style.width = size + "px";
+  img.style.width = ss + "px";
   img.style.opacity = 1;
   stage.appendChild(img);
   items.push(item);
@@ -176,60 +168,75 @@ function animate(now) {
 
     let x = it.sx;
     let y = it.sy;
+    let size = it.ss;
     let rotate = 0;
 
-    /* ===== pop ===== */
+    /* ===== pop（新仕様） ===== */
     if (effect.type === "pop") {
-
-      // 出現：下から勢いよく
       if (t < 0.2) {
-        const p = easeOut(t / 0.2);
+        const p = easeOutExpo(t / 0.2);
         x = W / 2;
         y = H + (H / 2 - H) * p;
-      }
-
-      // 待機：ぷかぷか＋左右回転
-      else if (t < 0.8) {
+      } else if (t < 0.8) {
         const f = (t - 0.2) / 0.6;
         x = W / 2;
-        y = H / 2 + Math.sin(f * 4 + it.phase) * SHAKE.pop.floatY;
-        rotate = Math.sin(f * 2 + it.phase) * SHAKE.pop.rotate;
-      }
-
-      // 消滅：ぴょんって下
-      else {
+        y = H / 2 + Math.sin(f * 4 + it.phase) * 20;
+        rotate = Math.sin(f * 2 + it.phase) * 8;
+      } else {
         const p = (t - 0.8) / 0.2;
         x = W / 2;
-        y = H / 2 + easeOut(p) * (H / 2 + 200);
+        y = H / 2 + easeOutExpo(p) * (H / 2 + 200);
         it.el.style.opacity = 1 - p;
       }
     }
 
-    /* ===== throw ===== */
+    /* ===== throw（原型そのまま） ===== */
     if (effect.type === "throw") {
-      const p = easeOut(t);
-      x = it.sx + (it.ex - it.sx) * p;
-      y = it.sy + (it.ey - it.sy) * p;
-      rotate = (1 - p) * SHAKE.throw.rotate;
+      if (elapsed < CHARGE_TIME) {
+        const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
+        x = it.sx + shake;
+        y = it.sy;
+        rotate = it.rotBase + shake * 0.5;
+      } else {
+        const throwT = Math.min(
+          (elapsed - CHARGE_TIME) / (total - CHARGE_TIME),
+          1
+        );
+        const p = easeOutExpo(throwT);
 
-      if (t > 0.85) {
-        it.el.style.opacity = 1 - (t - 0.85) / 0.15;
+        if (p < 0.85 && !it.state) {
+          x = it.sx + (it.ex - it.sx) * p;
+          y = it.sy + (it.ey - it.sy) * p;
+          size = it.ss + (it.es - it.ss) * p;
+          rotate = it.rotBase + (1 - p) * 360;
+        } else {
+          if (!it.state) {
+            it.state = "fall";
+            it.x = it.ex;
+            it.y = it.ey;
+            it.vy = -IMPACT_BOUNCE * 0.1;
+          }
+          it.vy += 1.2;
+          it.y += it.vy;
+          x = it.x;
+          y = it.y;
+          size = it.es;
+        }
       }
+      if (t > 0.85) it.el.style.opacity = 1 - (t - 0.85) / 0.15;
     }
 
-    /* ===== float ===== */
+    /* ===== float（原型そのまま） ===== */
     if (effect.type === "float") {
       x = it.sx + (it.ex - it.sx) * t;
-      y = it.sy + Math.sin(t * 6 + it.phase) * SHAKE.float.floatY;
-      rotate = Math.sin(t * 4 + it.phase) * SHAKE.float.rotate;
-
-      if (t > 0.85) {
-        it.el.style.opacity = 1 - (t - 0.85) / 0.15;
-      }
+      y = it.sy + Math.sin(t * 6 + it.phase) * 20;
+      rotate = Math.sin(t * 4 + it.phase) * 15;
+      if (t > 0.85) it.el.style.opacity = 1 - (t - 0.85) / 0.15;
     }
 
     it.el.style.transform =
-      `translate(${x - it.size / 2}px, ${y - it.size / 2}px) rotate(${rotate}deg)`;
+      `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${rotate}deg)`;
+    it.el.style.width = size + "px";
 
     /* ===== 完全削除 ===== */
     if (elapsed > total) {
