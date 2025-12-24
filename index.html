@@ -61,7 +61,7 @@ const GIFT_EFFECTS = {
 
     motion: {
       type: "easeOut",
-      rotate: false,
+      rotate: true,
       float: false
     }
   },
@@ -160,35 +160,42 @@ for (let i = 0; i < COUNT; i++) {
 ================================ */
 function animate(now) {
   items.forEach(it => {
-    const t = Math.min((now - it.startTime) / effect.duration, 1);
-    const p = easing(effect.motion.type, t);
+    const elapsed = now - it.startTime;
+    const t = Math.min(elapsed / effect.duration, 1);
 
-    const x = it.sx + (it.ex - it.sx) * p;
-    const y = it.sy + (it.ey - it.sy) * p;
-    const size = it.ss + (it.es - it.ss) * p;
+    let x, y, size;
 
-    let rotate = 0;
-    let floatY = 0;
-
-    if (effect.motion.rotate)
-      rotate = it.rotBase + Math.sin(t * 6) * 10;
-
-    if (effect.motion.float)
-      floatY = Math.sin(t * 8 + it.floatPhase) * 15;
-
-    it.el.style.transform =
-      `translate(${x}px, ${y + floatY}px) rotate(${rotate}deg)`;
-    it.el.style.width = size + "px";
-
-    if (effect.fadeOut) {
-      const fadeStart = 0.8;
-      it.el.style.opacity =
-        t < fadeStart ? 1 : (1 - (t - fadeStart) / (1 - fadeStart));
+    /* ========= ① 溜め ========= */
+    if (elapsed < 500) {
+      const shake = Math.sin(elapsed / 50) * 8;
+      x = it.sx + shake;
+      y = it.sy;
+      size = it.ss;
     }
+
+    /* ========= ② 投擲 ========= */
+    else {
+      const throwT = (elapsed - 500) / (effect.duration - 500);
+      const p = easeOutExpo(Math.min(throwT, 1));
+
+      x = it.sx + (it.ex - it.sx) * p;
+      y = it.sy + (it.ey - it.sy) * p;
+      size = it.ss + (it.es - it.ss) * p;
+
+      /* ========= ③ 着弾 ========= */
+      if (p > 0.85) {
+        const impactT = (p - 0.85) / 0.15;
+        y += Math.sin(impactT * Math.PI) * -30;
+      }
+    }
+
+    it.el.style.transform = `translate(${x}px, ${y}px)`;
+    it.el.style.width = size + "px";
   });
 
   requestAnimationFrame(animate);
 }
+
 
 requestAnimationFrame(animate);
 </script>
