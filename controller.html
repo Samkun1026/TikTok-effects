@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>OBS Controller</title>
+</head>
+<body>
+
+<script>
+/*
+  このHTMLは画面に何も出さない
+  わんコメ通知が「表示されたら」
+  OBS WebSocket経由で
+  演出用ブラウザをリロードする
+*/
+
+// ===== 設定 =====
+const OBS_WS_URL = "ws://localhost:4455";
+const TARGET_SOURCE_NAME = "Gift-Effect"; // ← 演出用ブラウザのソース名
+
+// ===== WebSocket 接続 =====
+const ws = new WebSocket(OBS_WS_URL);
+
+ws.onopen = () => {
+  console.log("OBS WebSocket connected");
+};
+
+// ===== OBSにリロード命令を送る =====
+function reloadBrowserSource() {
+  ws.send(JSON.stringify({
+    op: 6,
+    d: {
+      requestType: "PressInputPropertiesButton",
+      requestId: "reload_browser",
+      requestData: {
+        inputName: TARGET_SOURCE_NAME,
+        propertyName: "refreshnocache"
+      }
+    }
+  }));
+}
+
+// ===== テスト：ページが読み込まれた瞬間にリロード =====
+window.onload = () => {
+  // わんコメ通知が出た = このHTMLが再描画された
+  reloadBrowserSource();
+};
+</script>
+
+</body>
+</html>
