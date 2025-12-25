@@ -342,3 +342,17 @@ requestAnimationFrame(animate);
 
 </body>
 </html>
+
+<script>
+/* ==============================
+   🧩 わんコメ受信用
+================================ */
+window.addEventListener("message", event => {
+  if (!event.data) return;
+
+  // デバッグ用（まずはここが超重要）
+  console.log("受信:", event.data);
+
+  // 例: "Heart Me(1) x 3"
+});
+</script>
