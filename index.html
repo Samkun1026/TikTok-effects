@@ -223,21 +223,20 @@ function animate(now) {
       rotate = swayRot;
     }
 
-    /* ===== popular_vote（シンプル上向きカーブ） ===== */
+    /* ===== popular_vote 軌道（斜め上へ等速） ===== */
     if (effect.type === "popular") {
     
       const p = Math.min(elapsed / total, 1);
     
-      // Xは直線
+      // X：左 → 右（floatと同じ考え方）
       x = it.sx + (it.ex - it.sx) * p;
     
-      // Yは必ず下→上に膨らむ弧
-      const arc = Math.sin(p * Math.PI) * -200;
-      y = it.sy + (it.ey - it.sy) * p + arc;
+      // Y：下 → 上（Xと同じ進行率）
+      y = it.sy + (it.ey - it.sy) * p;
     
       rotate = 0;
     
-      // フェードアウト
+      // フェードアウト（最後だけ）
       if (p > 0.85) {
         it.el.style.opacity = 1 - (p - 0.85) / 0.15;
       }
