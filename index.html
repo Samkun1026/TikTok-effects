@@ -61,16 +61,16 @@ const GIFT_EFFECTS = {
     image: "Popular_Vote.png",
     type: "popular",
     countLimit: 20,
-    duration: 3000,          // float相当
+    duration: 3000,
     spawnInterval: 150,
     start: {
-      x: [0.15, 0.20],       // 左下・狭め
+      x: [0.15, 0.20],
       y: [0.77, 0.83],
       sizeRatio: [0.12, 0.12]
     },
     end: {
-      x: [0.85, 0.95],       // 真ん中付近
-      y: [-0.15, -0.05]     // 画面外で消す
+      x: [0.85, 0.95],
+      y: [-0.15, -0.05]
     }
   },
 
@@ -125,35 +125,21 @@ const rand = (a, b) => Math.random() * (b - a) + a;
 const easeOutExpo = t => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
 function parseGiftText(text) {
-  // 例: "Heart Me(1) x 1"
   const match = text.match(/^(.+?)\(\d+\)\s*x\s*(\d+)$/);
-
   if (!match) return null;
-
-  const gift = match[1]
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "_");
-
+  const gift = match[1].trim().toLowerCase().replace(/\s+/g, "_");
   const count = parseInt(match[2], 10);
-
   return { gift, count };
 }
-  
+
 /* ==============================
    URLパラメータ（ワンコメ対応）
 ================================ */
 const params = new URLSearchParams(location.search);
-
-// ワンコメから来る文字列
-// 例: "Heart Me(1) x 1"
 const rawText = params.get("text");
-
-// gift / n が直接来た場合（保険）
 let giftKey = params.get("gift");
 let rawCount = parseInt(params.get("n"), 10);
 
-// ワンコメ形式をパース
 if (rawText) {
   const parsed = parseGiftText(rawText);
   if (parsed) {
@@ -162,7 +148,6 @@ if (rawText) {
   }
 }
 
-// デフォルト
 giftKey = giftKey || "heart_me";
 rawCount = rawCount || 1;
 
@@ -173,23 +158,22 @@ const COUNT = Math.min(rawCount, effect.countLimit);
    ステージ
 ================================ */
 const stage = document.getElementById("stage");
-const W = stage.clientWidth;
-const H = stage.clientHeight;
 
 /* ==============================
-   アイテム生成（乱数はここだけ）
+   アイテム生成
 ================================ */
 const items = [];
 
 function spawnItem() {
+  const W = stage.clientWidth;
+  const H = stage.clientHeight;
+
   const img = document.createElement("img");
   img.src = effect.image;
   img.className = "effect-item";
 
   const ss = rand(...effect.start.sizeRatio) * W;
-  const es = effect.end?.sizeRatio
-    ? rand(...effect.end.sizeRatio) * W
-    : ss;
+  const es = effect.end?.sizeRatio ? rand(...effect.end.sizeRatio) * W : ss;
 
   const item = {
     el: img,
@@ -199,11 +183,10 @@ function spawnItem() {
     phase: Math.random() * Math.PI * 2,
     rotBase: rand(-25, 25),
     dead: false,
-
-    sx: effect.start.x ? rand(effect.start.x[0] * W, effect.start.x[1] * W) : W / 2,
-    sy: effect.start.y ? rand(effect.start.y[0] * H, effect.start.y[1] * H) : H,
-    ex: effect.end?.x ? rand(effect.end.x[0] * W, effect.end.x[1] * W) : W / 2,
-    ey: effect.end?.y ? rand(effect.end.y[0] * H, effect.end.y[1] * H) : H / 2
+    sx: effect.start.x ? rand(...effect.start.x.map(v => v * W)) : W / 2,
+    sy: effect.start.y ? rand(...effect.start.y.map(v => v * H)) : H,
+    ex: effect.end?.x ? rand(...effect.end.x.map(v => v * W)) : W / 2,
+    ey: effect.end?.y ? rand(...effect.end.y.map(v => v * H)) : H / 2
   };
 
   img.style.width = ss + "px";
@@ -220,6 +203,9 @@ for (let i = 0; i < COUNT; i++) {
    🎞 アニメーション
 ================================ */
 function animate(now) {
+  const W = stage.clientWidth;
+  const H = stage.clientHeight;
+
   items.forEach(it => {
     if (it.dead) return;
 
@@ -232,13 +218,11 @@ function animate(now) {
     let size = it.ss;
     let rotate = 0;
 
-    /* ===== pop（新仕様・常時揺れ） ===== */
+    /* ===== pop ===== */
     if (effect.type === "pop") {
-    
-      // 共通の揺れ（描画中ずっと）
       const floatY = Math.sin(t * 8 + it.phase) * 18;
       const swayRot = Math.sin(t * 6 + it.phase) * 8;
-    
+
       if (t < 0.2) {
         const p = easeOutExpo(t / 0.2);
         x = W / 2;
@@ -254,32 +238,20 @@ function animate(now) {
         y = H / 2 + easeOutExpo(p) * (H / 2 + 200) + floatY;
         it.el.style.opacity = 1 - p;
       }
-    
       rotate = swayRot;
     }
 
-    /* ===== popular_vote 軌道（上に行くほど加速） ===== */
+    /* ===== popular_vote ===== */
     if (effect.type === "popular") {
-    
-      const p = Math.min(elapsed / total, 1);
-    
-      // X：等速（float基準）
+      const p = t;
       x = it.sx + (it.ex - it.sx) * p;
-    
-      // Y：加速（最初ゆっくり → 最後きゅっ）
-      const py = p * p; // ease-in
+      const py = p * p;
       y = it.sy + (it.ey - it.sy) * py;
-    
       rotate = 0;
-    
-      // フェードアウト
-      if (p > 0.85) {
-        it.el.style.opacity = 1 - (p - 0.85) / 0.15;
-      }
+      if (p > 0.85) it.el.style.opacity = 1 - (p - 0.85) / 0.15;
     }
 
-
-    /* ===== throw（原型そのまま） ===== */
+    /* ===== throw ===== */
     if (effect.type === "throw") {
       if (elapsed < CHARGE_TIME) {
         const shake = Math.sin(elapsed / 50) * SHAKE_POWER;
@@ -287,12 +259,8 @@ function animate(now) {
         y = it.sy;
         rotate = it.rotBase + shake * 0.5;
       } else {
-        const throwT = Math.min(
-          (elapsed - CHARGE_TIME) / (total - CHARGE_TIME),
-          1
-        );
+        const throwT = Math.min((elapsed - CHARGE_TIME) / (total - CHARGE_TIME), 1);
         const p = easeOutExpo(throwT);
-
         if (p < 0.85 && !it.state) {
           x = it.sx + (it.ex - it.sx) * p;
           y = it.sy + (it.ey - it.sy) * p;
@@ -315,7 +283,7 @@ function animate(now) {
       if (t > 0.85) it.el.style.opacity = 1 - (t - 0.85) / 0.15;
     }
 
-    /* ===== float（原型そのまま） ===== */
+    /* ===== float ===== */
     if (effect.type === "float") {
       x = it.sx + (it.ex - it.sx) * t;
       y = it.sy + Math.sin(t * 6 + it.phase) * 20;
@@ -323,11 +291,9 @@ function animate(now) {
       if (t > 0.85) it.el.style.opacity = 1 - (t - 0.85) / 0.15;
     }
 
-    it.el.style.transform =
-      `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${rotate}deg)`;
+    it.el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${rotate}deg)`;
     it.el.style.width = size + "px";
 
-    /* ===== 完全削除 ===== */
     if (elapsed > total) {
       it.el.remove();
       it.dead = true;
@@ -340,20 +306,13 @@ function animate(now) {
 requestAnimationFrame(animate);
 </script>
 
-</body>
-</html>
-
 <script>
 /* ==============================
    🧩 わんコメ受信用
 ================================ */
 window.addEventListener("message", event => {
   if (!event.data) return;
-
-  // デバッグ用（まずはここが超重要）
   console.log("受信:", event.data);
-
-  // 例: "Heart Me(1) x 3"
 });
 </script>
 
@@ -364,9 +323,6 @@ window.addEventListener("message", event => {
 const giftQueue = [];
 let isPlaying = false;
 
-/* ==============================
-   URL受信（OBSリロード時）
-================================ */
 function readGiftFromURL() {
   const p = new URLSearchParams(location.search);
   const gift = p.get("gift");
@@ -379,26 +335,15 @@ function readGiftFromURL() {
   }
 }
 
-/* ==============================
-   再生制御（1件ずつ）
-================================ */
 function playNext() {
   if (isPlaying) return;
   if (giftQueue.length === 0) return;
-
   const { gift, count } = giftQueue.shift();
   isPlaying = true;
-
-  // URLパラメータを擬似的に上書き
   history.replaceState(null, "", `?gift=${gift}&n=${count}`);
-
-  // 既存ロジックを再実行
   location.reload();
 }
 
-/* ==============================
-   再生終了フック
-================================ */
 setInterval(() => {
   if (items.every(it => it.dead)) {
     isPlaying = false;
@@ -406,7 +351,8 @@ setInterval(() => {
   }
 }, 300);
 
-/* 起動 */
 readGiftFromURL();
 </script>
 
+</body>
+</html>
