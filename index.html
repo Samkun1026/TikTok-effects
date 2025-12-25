@@ -223,24 +223,26 @@ function animate(now) {
       rotate = swayRot;
     }
 
-    /* ===== popular_vote 軌道（斜め上へ等速） ===== */
+    /* ===== popular_vote 軌道（上に行くほど加速） ===== */
     if (effect.type === "popular") {
     
       const p = Math.min(elapsed / total, 1);
     
-      // X：左 → 右（floatと同じ考え方）
+      // X：等速（float基準）
       x = it.sx + (it.ex - it.sx) * p;
     
-      // Y：下 → 上（Xと同じ進行率）
-      y = it.sy + (it.ey - it.sy) * p;
+      // Y：加速（最初ゆっくり → 最後きゅっ）
+      const py = p * p; // ease-in
+      y = it.sy + (it.ey - it.sy) * py;
     
       rotate = 0;
     
-      // フェードアウト（最後だけ）
+      // フェードアウト
       if (p > 0.85) {
         it.el.style.opacity = 1 - (p - 0.85) / 0.15;
       }
     }
+
 
     /* ===== throw（原型そのまま） ===== */
     if (effect.type === "throw") {
