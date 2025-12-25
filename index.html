@@ -356,3 +356,57 @@ window.addEventListener("message", event => {
   // 例: "Heart Me(1) x 3"
 });
 </script>
+
+<script>
+/* ==============================
+   🎮 外部入力キュー
+================================ */
+const giftQueue = [];
+let isPlaying = false;
+
+/* ==============================
+   URL受信（OBSリロード時）
+================================ */
+function readGiftFromURL() {
+  const p = new URLSearchParams(location.search);
+  const gift = p.get("gift");
+  const n = parseInt(p.get("n")) || 1;
+
+  if (gift && GIFT_EFFECTS[gift]) {
+    giftQueue.push({ gift, count: n });
+    console.log("受信:", gift, n);
+    playNext();
+  }
+}
+
+/* ==============================
+   再生制御（1件ずつ）
+================================ */
+function playNext() {
+  if (isPlaying) return;
+  if (giftQueue.length === 0) return;
+
+  const { gift, count } = giftQueue.shift();
+  isPlaying = true;
+
+  // URLパラメータを擬似的に上書き
+  history.replaceState(null, "", `?gift=${gift}&n=${count}`);
+
+  // 既存ロジックを再実行
+  location.reload();
+}
+
+/* ==============================
+   再生終了フック
+================================ */
+setInterval(() => {
+  if (items.every(it => it.dead)) {
+    isPlaying = false;
+    playNext();
+  }
+}, 300);
+
+/* 起動 */
+readGiftFromURL();
+</script>
+
