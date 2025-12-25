@@ -124,12 +124,47 @@ const IMPACT_BOUNCE = 32;
 const rand = (a, b) => Math.random() * (b - a) + a;
 const easeOutExpo = t => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
 
+function parseGiftText(text) {
+  // 例: "Heart Me(1) x 1"
+  const match = text.match(/^(.+?)\(\d+\)\s*x\s*(\d+)$/);
+
+  if (!match) return null;
+
+  const gift = match[1]
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  const count = parseInt(match[2], 10);
+
+  return { gift, count };
+}
+  
 /* ==============================
-   URLパラメータ
+   URLパラメータ（ワンコメ対応）
 ================================ */
 const params = new URLSearchParams(location.search);
-const giftKey = params.get("gift") || "heart_me";
-const rawCount = parseInt(params.get("n")) || 1;
+
+// ワンコメから来る文字列
+// 例: "Heart Me(1) x 1"
+const rawText = params.get("text");
+
+// gift / n が直接来た場合（保険）
+let giftKey = params.get("gift");
+let rawCount = parseInt(params.get("n"), 10);
+
+// ワンコメ形式をパース
+if (rawText) {
+  const parsed = parseGiftText(rawText);
+  if (parsed) {
+    giftKey = parsed.gift;
+    rawCount = parsed.count;
+  }
+}
+
+// デフォルト
+giftKey = giftKey || "heart_me";
+rawCount = rawCount || 1;
 
 const effect = GIFT_EFFECTS[giftKey];
 const COUNT = Math.min(rawCount, effect.countLimit);
