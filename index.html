@@ -2,20 +2,17 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Love You So Much Effect</title>
+<title>Gift Effect Engine - Test</title>
 <style>
 html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
   background: rgba(0,0,0,0) !important;
   overflow: hidden;
 }
 #stage {
   position: absolute;
-  left: 50%;
-  top: 0;
+  left: 50%; top: 0;
   width: calc(100% + 320px);
   height: 100%;
   transform: translateX(-50%);
@@ -25,118 +22,198 @@ html, body {
   position: absolute;
   will-change: transform, opacity;
 }
+button {
+  position: absolute; top: 10px; left: 10px; z-index: 1000;
+  margin-right: 5px;
+}
 </style>
 </head>
 <body>
-
 <div id="stage"></div>
+<button onclick="testGift('heart_me',3)">Heart x3</button>
+<button onclick="testGift('baseball',5)">Baseball x5</button>
+<button onclick="testGift('rose',10)">Rose x10</button>
 
 <script>
-const stage = document.getElementById("stage");
-const effect = {
-  image: "Love_you_so_much.png",
-  type: "love_spike",
-  countLimit: 1,
-  duration: 4000,
-  spawnInterval: 0,
-  start: { x: [0.1,0.15], y: [0.7,0.75], sizeRatio: [0.08,0.1] },
-  end: { x: [0.5,0.6], y: [0.35,0.4], sizeRatio: [0.08,0.1] },
-  spike: { image: "Spike.png", sizeRatio: [0.12,0.16], rotation: -45, duration: 600 }
+/* ==============================
+   🎁 ギフト定義（ここに新しい演出を追加可能）
+================================ */
+const GIFT_EFFECTS = {
+  heart_me: { 
+    image: "Heart_Me.png", type: "pop", countLimit: 10, duration: 4000, spawnInterval: 0, 
+    start: { sizeRatio: [0.15,0.15] } 
+  },
+  baseball: { 
+    image: "Baseball.png", type: "throw", countLimit: 50, duration: 3200, spawnInterval: 120, 
+    start: { x:[0.48,0.52], y:[0.67,0.70], sizeRatio:[0.1,0.125] }, 
+    end: { x:[0.35,0.55], y:[0.2,0.4], sizeRatio:[0.05,0.075] } 
+  },
+  rose: {
+    image: "Rose.png", type: "flower", countLimit: 50, duration: 4000, spawnInterval: 120,
+    start: { x:[0.1,0.9], y:[0.2,0.8], sizeRatio:[0.01,0.01] },
+    end: { sizeRatio:[0.05,0.07] }
+  },
+  love_you_so_much: {
+    image: "Love_you_so_much.png",
+    spikeImage: "Spike.png",  // ここでSpike画像を登録
+    type: "spike",
+    countLimit: 1,
+    duration: 4000,
+    spawnInterval: 0,
+    start: { x:[0,0.05], y:[0.7,0.75], sizeRatio:[0.1,0.12] },
+    end: { x:[0.55,0.65], y:[0.4,0.5] } // Loveが飛ぶ最終到達点
+  }
 };
-const CHARGE_TIME=500;
+
+/* ==============================
+   定数＆ユーティリティ
+================================ */
+const CHARGE_TIME=500, SHAKE_POWER=8, IMPACT_BOUNCE=32;
 const rand=(a,b)=>Math.random()*(b-a)+a;
+const easeOutExpo=t=>(t===1?1:1-Math.pow(2,-10*t));
 
-const items=[];
+/* ==============================
+   ステージ＆キュー管理
+================================ */
+const stage=document.getElementById("stage");
+const giftQueue=[];
+let isPlaying=false;
+  
+function spawnEffect(giftKey,count){
+  const effect=GIFT_EFFECTS[giftKey];
+  if(!effect) return;
+  const COUNT=Math.min(count,effect.countLimit);
+  const items=[];
 
-function spawnItem(){
-  const W=stage.clientWidth,H=stage.clientHeight;
-  const img=document.createElement("img");
-  img.src=effect.image;
-  img.className="effect-item";
-  const ss=rand(...effect.start.sizeRatio)*W;
-  const es=rand(...effect.end.sizeRatio)*W;
-  const sx=rand(...effect.start.x.map(v=>v*W));
-  const sy=rand(...effect.start.y.map(v=>v*H));
-  const ex=rand(...effect.end.x.map(v=>v*W));
-  const ey=rand(...effect.end.y.map(v=>v*H));
-  img.style.width=ss+"px";
-  img.style.opacity=1;
-  stage.appendChild(img);
-  items.push({el:img, sx,sy, ex,ey, ss,es, startTime:performance.now(), vy:0, falling:false, spikeEl:null});
-}
+  function spawnItem(){
+    const W=stage.clientWidth,H=stage.clientHeight;
+    const img=document.createElement("img");
+    img.src=effect.image;
+    img.className="effect-item";
 
-spawnItem();
+    const ss=rand(...effect.start.sizeRatio)*W;
+    const es=effect.end?.sizeRatio?rand(...effect.end.sizeRatio)*W:ss;
+    const sx=effect.start.x?rand(...effect.start.x.map(v=>v*W)):W/2;
+    const sy=effect.start.y?rand(...effect.start.y.map(v=>v*H)):H;
+    const ex=effect.end?.x?rand(...effect.end.x.map(v=>v*W)):sx;
+    const ey=effect.end?.y?rand(...effect.end.y.map(v=>v*H)):sy;
 
-function animate(now){
-  const W=stage.clientWidth,H=stage.clientHeight;
-  items.forEach(it=>{
-    if(it.dead) return;
-    const elapsed=now-it.startTime;
-    const t=Math.min(elapsed/effect.duration,1);
-    let x=it.sx, y=it.sy, size=it.ss, rotate=0;
+    const item={el:img,startTime:performance.now(),sx,sy,ex,ey,ss,es,phase:Math.random()*Math.PI*2,rotBase:rand(-25,25),dead:false,state:null,vy:0};
+    img.style.width=ss+"px";
+    img.style.opacity=1;
+    stage.appendChild(img);
+    items.push(item);
+  }
 
-    // 震え
-    if(elapsed<CHARGE_TIME){
-      const shake=Math.sin(elapsed/80)*6;
-      x=it.sx+shake; y=it.sy;
-      rotate=shake*0.5;
-    }
-    else{
-      // 飛行
-      const flyT=Math.min((elapsed-CHARGE_TIME)/(effect.duration-CHARGE_TIME),1);
-      x=it.sx+(it.ex-it.sx)*flyT;
-      y=it.sy+(it.ey-it.sy)*flyT;
-      size=it.ss+(it.es-it.ss)*flyT;
-      rotate=(1-flyT)*360;
+  for(let i=0;i<COUNT;i++) setTimeout(spawnItem,i*effect.spawnInterval);
 
-      // Spike生成
-      if(!it.spikeEl){
-        const spike=document.createElement("img");
-        spike.src=effect.spike.image;
-        spike.className="effect-item";
-        const spikeSize=rand(...effect.spike.sizeRatio)*W;
-        spike.style.width=spikeSize+"px";
-        spike.style.opacity=1;
-        stage.appendChild(spike);
-        it.spikeEl=spike;
+  function animate(now){
+    const W=stage.clientWidth,H=stage.clientHeight;
+
+    items.forEach(it=>{
+      if(it.dead) return;
+      const elapsed = now-it.startTime;
+      const total = effect.duration;
+      const t=Math.min(elapsed/total,1);
+
+      let x=it.sx,y=it.sy,size=it.ss,rotate=0;
+
+      /* ===== pop ===== */
+      if(effect.type==="pop"){
+        const floatY=Math.sin(t*8+it.phase)*18;
+        const swayRot=Math.sin(t*6+it.phase)*8;
+        if(t<0.2){ const p=easeOutExpo(t/0.2); x=W/2; y=H+(H/2-H)*p+floatY;}
+        else if(t<0.8){ x=W/2; y=H/2+floatY;}
+        else{ const p=(t-0.8)/0.2; x=W/2; y=H/2+easeOutExpo(p)*(H/2+200)+floatY; it.el.style.opacity=1-p;}
+        rotate=swayRot;
       }
 
-      // Spike追従＋反時計回り
-      if(it.spikeEl){
-        const spikeX=x+size/2;
-        const spikeY=y-size/2;
-        it.spikeEl.style.transform=`translate(${spikeX}px, ${spikeY}px) rotate(${effect.spike.rotation}deg)`;
+      /* ===== throw ===== */
+      if(effect.type==="throw"){
+        if(elapsed<CHARGE_TIME){ const shake=Math.sin(elapsed/50)*SHAKE_POWER; x=it.sx+shake; y=it.sy; rotate=it.rotBase+shake*0.5;}
+        else{
+          const throwT=Math.min((elapsed-CHARGE_TIME)/(total-CHARGE_TIME),1);
+          const p=easeOutExpo(throwT);
+          if(p<0.85&&!it.state){ x=it.sx+(it.ex-it.sx)*p; y=it.sy+(it.ey-it.sy)*p; size=it.ss+(it.es-it.ss)*p; rotate=it.rotBase+(1-p)*360;}
+          else{ if(!it.state){it.state="fall"; it.x=it.ex; it.y=it.ey; it.vy=-IMPACT_BOUNCE*0.1;} it.vy+=1.2; it.y+=it.vy; x=it.x; y=it.y; size=it.es;}
+        }
+        if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;
       }
 
-      // Love到着→下に落とす
-      if(flyT>=1 && !it.falling){
-        it.falling=true;
-        it.vy=25;
-        it.ey=H*0.65;
+      /* ===== spike ===== */
+  if(effect.type==="spike"){
+      if(elapsed<CHARGE_TIME){
+          const shake=Math.sin(elapsed/50)*SHAKE_POWER;
+          x=it.sx+shake;
+          y=it.sy;
+          rotate=it.rotBase+shake*0.5;
+      } else {
+          const throwT = Math.min((elapsed-CHARGE_TIME)/(total-CHARGE_TIME),1);
+          const p = easeOutExpo(throwT);
+
+          // Love飛行中
+          if(!it.state){
+              x = it.sx + (it.ex - it.sx) * p;
+              y = it.sy + (it.ey - it.sy) * p;
+              size = it.ss + (it.es - it.ss) * p;
+              rotate = it.rotBase + (1 - p) * 360;
+
+              // 到達した瞬間にSpikeを出す
+              if(p >= 1){
+                  it.state = "spike"; // Love到達フラグ
+                  Spike(it, effect);  // Spike関数を呼ぶ
+              }
+          }
+          // Spikeに叩かれて落下
+          else if(it.state === "spikeFall"){
+              it.vy += 1.5;  // 落下加速度
+              y += it.vy;
+              rotate += 10;   // 落下中回転
+          }
       }
-    }
 
-    // 下落
-    if(it.falling){
-      it.vy+=1.5;
-      y+=it.vy;
-      x=W*0.55;
-      if(y>=it.ey){
-        y=it.ey;
-        if(it.spikeEl){it.spikeEl.remove(); it.spikeEl=null;}
+      if(t>0.85) it.el.style.opacity = 1-(t-0.85)/0.15;
+  }
+
+
+      /* ===== flower ===== */
+      if(effect.type==="flower"){
+        const floatY=Math.sin(t*6+it.phase)*10;
+        const swayRot=Math.sin(t*4+it.phase)*5;
+        if(t<0.3){ const p=easeOutExpo(t/0.3); size=it.ss+(it.es-it.ss)*p; x=it.sx+floatY; y=it.sy+floatY; rotate=swayRot;}
+        else if(t<0.8){ size=it.es; x=it.sx+floatY; y=it.sy+floatY; rotate=swayRot;}
+        else{ const p=(t-0.8)/0.2; size=it.es*(1-p); x=it.sx+floatY; y=it.sy+floatY; rotate=swayRot; it.el.style.opacity=1-p;}
       }
-    }
 
-    it.el.style.transform=`translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
-    it.el.style.width=size+"px";
+      // 共通
+      it.el.style.transform=`translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
+      it.el.style.width=size+"px";
 
-    if(elapsed>effect.duration){it.el.remove(); it.dead=true;}
-  });
+      if(elapsed>total*1.5){ it.el.remove(); it.dead=true;}
+    });
+
+    requestAnimationFrame(animate);
+  }
+
   requestAnimationFrame(animate);
 }
 
-requestAnimationFrame(animate);
-</script>
+function playNext(){
+  if(isPlaying) return;
+  if(giftQueue.length===0) return;
+  isPlaying=true;
+  const {gift,count}=giftQueue.shift();
+  spawnEffect(gift,count);
+  setTimeout(()=>{ isPlaying=false; playNext(); },5000);
+}
 
+/* ==============================
+   テスト用関数
+================================ */
+function testGift(name,count){
+  giftQueue.push({gift:name,count});
+  playNext();
+}
+</script>
 </body>
 </html>
