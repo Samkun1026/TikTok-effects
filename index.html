@@ -404,3 +404,28 @@ readGiftFromURL();
 
 </body>
 </html>
+<script>
+/* ==============================
+   🔌 Node.js サーバー接続
+================================ */
+const socket = new WebSocket("ws://localhost:3001");
+
+socket.addEventListener("open", () => {
+  console.log("🟢 サーバー接続OK");
+});
+
+socket.addEventListener("message", event => {
+  console.log("📩 サーバーから受信:", event.data);
+
+  // 例: "Heart Me(1) x 2"
+  const parsed = parseGiftText(event.data);
+  if (!parsed) return;
+
+  giftQueue.push({
+    gift: parsed.gift,
+    count: parsed.count
+  });
+
+  playNext();
+});
+</script>
