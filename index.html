@@ -209,35 +209,39 @@ function animate(now){
         it.spikeRot = 0;
       }
       const spikeImg = it.spikeImg;
-
+    
       if(it.state === "fly"){
+        // 飛行
         const flyT = Math.min(elapsed / total,1);
         x = it.sx + (it.ex - it.sx)*flyT + Math.sin(flyT*10 + it.phase)*15;
         y = it.sy + (it.ey - it.sy)*flyT + Math.sin(flyT*12 + it.phase)*10;
         size = it.ss + (it.es - it.ss)*flyT;
         rotate = Math.sin(flyT*6 + it.phase)*20;
-
+    
         if(flyT >= 1){
           it.state = "hit";
+          // Spike表示
           spikeImg.style.opacity = 1;
-          it.spikeX = it.ex + size/2;
-          it.spikeY = it.ey - size/2;
+          it.spikeX = x + size/2;
+          it.spikeY = y - size/2;
         }
       } else if(it.state === "hit"){
+        // Loveを下に落とす
         if(!it.vy) it.vy = 0;
-        it.vy += 1.2;
-        y = (it.y || it.ey) + it.vy;
-        it.y = y;
+        it.vy += 1.5; // 落下速度
+        y += it.vy;
         x = it.ex;
-
-        it.spikeRot -= 15; // 反時計回り
+    
+        // Spikeの回転（反時計回り）
+        it.spikeRot -= 15;
         spikeImg.style.transform = `translate(${it.spikeX - spikeImg.width/2}px, ${it.spikeY - spikeImg.height/2}px) rotate(${it.spikeRot}deg)`;
-
+    
         if(y >= H*0.65){
           it.dead = true;
           spikeImg.remove();
         }
       }
+    
       it.el.style.transform = `translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
       it.el.style.width = size + "px";
     }
