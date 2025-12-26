@@ -193,59 +193,52 @@ function animate(now){
     it.el.style.opacity = 1 - p;
   }
 }
+    // ==========================
+    // Spike演出(Love you so much)
+    // ==========================
     if(effect.type === "Spike"){
       if(!it.state) it.state = "fly";
-    
-      // Spike画像を1つだけ生成
       if(!it.spikeImg){
         const spike = document.createElement("img");
         spike.src = effect.spike.image;
         spike.className = "effect-item";
-        spike.style.width = rand(...effect.spike.sizeRatio)*stage.clientWidth + "px";
+        spike.style.width = rand(...effect.spike.sizeRatio)*W + "px";
         spike.style.opacity = 0;
         stage.appendChild(spike);
         it.spikeImg = spike;
         it.spikeRot = 0;
       }
       const spikeImg = it.spikeImg;
-    
+
       if(it.state === "fly"){
-        // Loveギフトが飛ぶ軌道
-        const flyT = Math.min(elapsed / total, 1);
-        x = it.sx + (it.ex - it.sx) * flyT + Math.sin(flyT * 10 + it.phase) * 15;
-        y = it.sy + (it.ey - it.sy) * flyT + Math.sin(flyT * 12 + it.phase) * 10;
-        size = it.ss + (it.es - it.ss) * flyT;
-        rotate = Math.sin(flyT * 6 + it.phase) * 20;
-    
-        // Loveが到達地点に着いたらSpike表示
+        const flyT = Math.min(elapsed / total,1);
+        x = it.sx + (it.ex - it.sx)*flyT + Math.sin(flyT*10 + it.phase)*15;
+        y = it.sy + (it.ey - it.sy)*flyT + Math.sin(flyT*12 + it.phase)*10;
+        size = it.ss + (it.es - it.ss)*flyT;
+        rotate = Math.sin(flyT*6 + it.phase)*20;
+
         if(flyT >= 1){
           it.state = "hit";
           spikeImg.style.opacity = 1;
-          it.spikeX = it.ex; // Love最終位置の右上
-          it.spikeY = it.ey - 40; // 少し上に表示
+          it.spikeX = it.ex + size/2;
+          it.spikeY = it.ey - size/2;
         }
       } else if(it.state === "hit"){
-        // Love落下処理
         if(!it.vy) it.vy = 0;
-        it.vy += 1.2; // 重力
+        it.vy += 1.2;
         y = (it.y || it.ey) + it.vy;
         it.y = y;
-        x = it.ex; // 横位置固定
-        size = it.es;
-    
-        // Spikeを反時計回りに回転
-        it.spikeRot -= 15;
+        x = it.ex;
+
+        it.spikeRot -= 15; // 反時計回り
         spikeImg.style.transform = `translate(${it.spikeX - spikeImg.width/2}px, ${it.spikeY - spikeImg.height/2}px) rotate(${it.spikeRot}deg)`;
-    
-        // Loveが下まで落ちたら消去
-        if(y >= stage.clientHeight * 0.65){
+
+        if(y >= H*0.65){
           it.dead = true;
           spikeImg.remove();
         }
       }
-    
-      // Loveギフトの位置反映
-      it.el.style.transform = `translate(${x - size/2}px, ${y - size/2}px) rotate(${rotate}deg)`;
+      it.el.style.transform = `translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
       it.el.style.width = size + "px";
     }
 
