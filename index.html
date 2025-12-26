@@ -30,6 +30,54 @@ html, body {
 }
 </style>
 </head>
+  <script>
+/* ==============================
+   🌐 Node.js サーバー接続
+================================ */
+
+// ⚠️ 同じPCなら localhost でOK
+// スマホ確認するなら PCのIPv4アドレス
+const ws = new WebSocket("ws://localhost:8080");
+
+ws.onopen = () => {
+  console.log("🟢 サーバー接続完了");
+};
+
+ws.onmessage = e => {
+  try {
+    const data = JSON.parse(e.data);
+    console.log("🎁 サーバーから受信", data);
+
+    // data = { type: "gift", name: "Heart Me", count: 3 }
+
+    if (data.type !== "gift") return;
+
+    // gift名を既存仕様に合わせる（超重要）
+    const giftKey = data.name
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+
+    if (!GIFT_EFFECTS[giftKey]) {
+      console.warn("未対応ギフト:", giftKey);
+      return;
+    }
+
+    giftQueue.push({
+      gift: giftKey,
+      count: data.count
+    });
+
+    playNext();
+
+  } catch (err) {
+    console.error("❌ 受信エラー", err);
+  }
+};
+
+ws.onerror = err => {
+  console.error("❌ WebSocket エラー", err);
+};
+</script>
 <body>
 
 <div id="stage"></div>
