@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Gift Effect Engine</title>
+<title>Love You So Much Effect</title>
 <style>
 html, body {
   margin: 0;
@@ -32,248 +32,110 @@ html, body {
 <div id="stage"></div>
 
 <script>
-/* ==============================
-   🎁 ギフト定義（変更なし）
-================================ */
-const GIFT_EFFECTS = {
-  heart_me: { image: "Heart_Me.png", type: "pop", countLimit: 1, duration: 4000, spawnInterval: 0, start: { sizeRatio: [0.15, 0.15] } },
-  cool_love: { image: "Cool_love.png", type: "pop", countLimit: 1, duration: 4000, spawnInterval: 0, start: { sizeRatio: [0.11, 0.11] } },
-  popular_vote: { image: "Popular_Vote.png", type: "popular", countLimit: 20, duration: 3000, spawnInterval: 150, start: { x: [0.15, 0.20], y: [0.77, 0.83], sizeRatio: [0.12, 0.12] }, end: { x: [0.85, 0.95], y: [-0.15, -0.05] } },
-  baseball: { image: "Baseball.png", type: "throw", countLimit: 20, duration: 3200, spawnInterval: 120, start: { x: [0.48, 0.52], y: [0.67, 0.70], sizeRatio: [0.1, 0.125] }, end: { x: [0.35, 0.55], y: [0.2, 0.4], sizeRatio: [0.05, 0.075] } },
-  suprised_fish: { image: "Surprised_Fish.png", type: "float", countLimit: 30, duration: 6000, spawnInterval: 150, start: { x: [-0.15, -0.05], y: [0.25, 0.6], sizeRatio: [0.05, 0.06] }, end: { x: [1.05, 1.15], y: [0.25, 0.6], sizeRatio: [0.05, 0.06] } },
-  rose: {
-  image: "Rose.png",
-  type: "rose",
-  countLimit: 50,
-  duration: 4000,
-  spawnInterval: 120,
-  start: { x: [0.1, 0.9], y: [0.2, 0.8], sizeRatio: [0.01, 0.01] },
-  end: { sizeRatio: [0.05, 0.07] } // 咲いた大きさ
-},
-
-  love_you_so_much: {
-  image: "Love_you_so_much.png",
-  type: "spike",
-  countLimit: 10,
-  duration: 4000,
-  spawnInterval: 150,
-  start: { x: [0.1, 0.15], y: [0.7, 0.75], sizeRatio: [0.08, 0.1] },
-  end: { x: [0.5, 0.6], y: [0.35, 0.4], sizeRatio: [0.08, 0.1] },
-  spike: { image: "Spike.png", sizeRatio: [0.12, 0.16], rotation: -45, duration: 600 }
-}
-};
-
-/* ==============================
-   定数・ユーティリティ（変更なし）
-================================ */
-const CHARGE_TIME = 500;
-const SHAKE_POWER = 8;
-const IMPACT_BOUNCE = 32;
-const rand = (a,b)=>Math.random()*(b-a)+a;
-const easeOutExpo = t => (t===1?1:1-Math.pow(2,-10*t));
-
-function parseGiftText(text){
-  const match = text.match(/^(.+?)\(\d+\)\s*x\s*(\d+)$/);
-  if(!match) return null;
-  const gift = match[1].trim().toLowerCase().replace(/\s+/g,"_");
-  const count = parseInt(match[2],10);
-  return {gift,count};
-}
-
-/* ==============================
-   ステージ
-================================ */
 const stage = document.getElementById("stage");
+const effect = {
+  image: "Love_you_so_much.png",
+  type: "love_spike",
+  countLimit: 1,
+  duration: 4000,
+  spawnInterval: 0,
+  start: { x: [0.1,0.15], y: [0.7,0.75], sizeRatio: [0.08,0.1] },
+  end: { x: [0.5,0.6], y: [0.35,0.4], sizeRatio: [0.08,0.1] },
+  spike: { image: "Spike.png", sizeRatio: [0.12,0.16], rotation: -45, duration: 600 }
+};
+const CHARGE_TIME=500;
+const rand=(a,b)=>Math.random()*(b-a)+a;
 
-/* ==============================
-   ギフトキュー
-================================ */
-const giftQueue = [];
-let isPlaying = false;
-
-function playNext(){
-  if(isPlaying) return;
-  if(giftQueue.length===0) return;
-  const {gift,count} = giftQueue.shift();
-  isPlaying=true;
-  history.replaceState(null,"",`?gift=${gift}&n=${count}`);
-  location.reload();
-}
-
-/* ==============================
-   WebSocket接続（Nodeサーバー用）
-================================ */
-const socket = new WebSocket("ws://localhost:3001");
-socket.addEventListener("open",()=>console.log("🟢 WebSocket接続OK"));
-socket.addEventListener("message",event=>{
-  const parsed=parseGiftText(event.data);
-  if(!parsed) return;
-  giftQueue.push({gift:parsed.gift,count:parsed.count});
-  playNext();
-});
-
-/* ==============================
-   URLパラメータからのギフト
-================================ */
-const params = new URLSearchParams(location.search);
-const rawText = params.get("text");
-let giftKey = params.get("gift");
-let rawCount = parseInt(params.get("n"),10);
-if(rawText){
-  const parsed=parseGiftText(rawText);
-  if(parsed){giftKey=parsed.gift; rawCount=parsed.count;}
-}
-giftKey=giftKey||"heart_me";
-rawCount=rawCount||1;
-const effect=GIFT_EFFECTS[giftKey];
-const COUNT=Math.min(rawCount,effect.countLimit);
-
-/* ==============================
-   アイテム生成＆アニメーション（変更なし）
-================================ */
 const items=[];
+
 function spawnItem(){
   const W=stage.clientWidth,H=stage.clientHeight;
   const img=document.createElement("img");
   img.src=effect.image;
   img.className="effect-item";
   const ss=rand(...effect.start.sizeRatio)*W;
-  const es=effect.end?.sizeRatio?rand(...effect.end.sizeRatio)*W:ss;
-  const item={el:img,startTime:performance.now(),ss,es,phase:Math.random()*Math.PI*2,rotBase:rand(-25,25),dead:false,sx:effect.start.x?rand(...effect.start.x.map(v=>v*W)):W/2,sy:effect.start.y?rand(...effect.start.y.map(v=>v*H)):H,ex:effect.end?.x?rand(...effect.end.x.map(v=>v*W)):W/2,ey:effect.end?.y?rand(...effect.end.y.map(v=>v*H)):H/2};
+  const es=rand(...effect.end.sizeRatio)*W;
+  const sx=rand(...effect.start.x.map(v=>v*W));
+  const sy=rand(...effect.start.y.map(v=>v*H));
+  const ex=rand(...effect.end.x.map(v=>v*W));
+  const ey=rand(...effect.end.y.map(v=>v*H));
   img.style.width=ss+"px";
   img.style.opacity=1;
   stage.appendChild(img);
-  items.push(item);
+  items.push({el:img, sx,sy, ex,ey, ss,es, startTime:performance.now(), vy:0, falling:false, spikeEl:null});
 }
-for(let i=0;i<COUNT;i++){setTimeout(spawnItem,i*effect.spawnInterval);}
+
+spawnItem();
+
 function animate(now){
   const W=stage.clientWidth,H=stage.clientHeight;
   items.forEach(it=>{
     if(it.dead) return;
     const elapsed=now-it.startTime;
-    const total=effect.duration;
-    const t=Math.min(elapsed/total,1);
-    let x=it.sx,y=it.sy,size=it.ss,rotate=0;
-
-    if(effect.type==="pop"){
-      const floatY=Math.sin(t*8+it.phase)*18;
-      const swayRot=Math.sin(t*6+it.phase)*8;
-      if(t<0.2){const p=easeOutExpo(t/0.2); x=W/2; y=H+(H/2-H)*p+floatY;}
-      else if(t<0.8){x=W/2; y=H/2+floatY;}
-      else{const p=(t-0.8)/0.2;x=W/2;y=H/2+easeOutExpo(p)*(H/2+200)+floatY;it.el.style.opacity=1-p;}
-      rotate=swayRot;
-    }
-
-    if(effect.type === "rose"){
-  const floatY = Math.sin(t*6 + it.phase)*10;
-  const swayRot = Math.sin(t*4 + it.phase)*5;
-
-  // 出現〜咲く
-  if(t < 0.3){
-    const p = easeOutExpo(t/0.3);
-    size = it.ss + (it.es - it.ss)*p;
-    x = it.sx + floatY;
-    y = it.sy + floatY;
-    rotate = swayRot;
-  }
-  // 咲いた状態で揺れる
-  else if(t < 0.8){
-    size = it.es;
-    x = it.sx + floatY;
-    y = it.sy + floatY;
-    rotate = swayRot;
-  }
-  // 消えるとき小さく
-  else{
-    const p = (t-0.8)/0.2;
-    size = it.es*(1-p);
-    x = it.sx + floatY;
-    y = it.sy + floatY;
-    rotate = swayRot;
-    it.el.style.opacity = 1 - p;
-  }
-}
-    // ==========================
-    // Spike演出(Love you so much)
-    // ==========================
-   function animate(now){
-  const W=stage.clientWidth, H=stage.clientHeight;
-  items.forEach(it=>{
-    if(it.dead) return;
-    const elapsed=now-it.startTime;
-    const total=effect.duration;
-    const t=Math.min(elapsed/total,1);
+    const t=Math.min(elapsed/effect.duration,1);
     let x=it.sx, y=it.sy, size=it.ss, rotate=0;
 
-    // ------------------------------
-    // ポップ系
-    // ------------------------------
-    if(effect.type==="pop"){
-      const floatY=Math.sin(t*8+it.phase)*18;
-      const swayRot=Math.sin(t*6+it.phase)*8;
-      if(t<0.2){const p=easeOutExpo(t/0.2); x=W/2; y=H+(H/2-H)*p+floatY;}
-      else if(t<0.8){x=W/2; y=H/2+floatY;}
-      else{const p=(t-0.8)/0.2;x=W/2;y=H/2+easeOutExpo(p)*(H/2+200)+floatY;it.el.style.opacity=1-p;}
-      rotate=swayRot;
+    // 震え
+    if(elapsed<CHARGE_TIME){
+      const shake=Math.sin(elapsed/80)*6;
+      x=it.sx+shake; y=it.sy;
+      rotate=shake*0.5;
     }
+    else{
+      // 飛行
+      const flyT=Math.min((elapsed-CHARGE_TIME)/(effect.duration-CHARGE_TIME),1);
+      x=it.sx+(it.ex-it.sx)*flyT;
+      y=it.sy+(it.ey-it.sy)*flyT;
+      size=it.ss+(it.es-it.ss)*flyT;
+      rotate=(1-flyT)*360;
 
-    // ------------------------------
-    // popular系
-    // ------------------------------
-    if(effect.type==="popular"){
-      const p=t; x=it.sx+(it.ex-it.sx)*p; const py=p*p; y=it.sy+(it.ey-it.sy)*py; rotate=0;
-      if(p>0.85) it.el.style.opacity=1-(p-0.85)/0.15;
-    }
-
-    // ------------------------------
-    // throw系
-    // ------------------------------
-    if(effect.type==="throw"){
-      if(elapsed<CHARGE_TIME){const shake=Math.sin(elapsed/50)*SHAKE_POWER; x=it.sx+shake; y=it.sy; rotate=it.rotBase+shake*0.5;}
-      else{
-        const throwT=Math.min((elapsed-CHARGE_TIME)/(total-CHARGE_TIME),1);
-        const p=easeOutExpo(throwT);
-        if(p<0.85&&!it.state){x=it.sx+(it.ex-it.sx)*p;y=it.sy+(it.ey-it.sy)*p;size=it.ss+(it.es-it.ss)*p;rotate=it.rotBase+(1-p)*360;}
-        else{if(!it.state){it.state="fall";it.x=it.ex;it.y=it.ey;it.vy=-IMPACT_BOUNCE*0.1;} it.vy+=1.2; it.y+=it.vy; x=it.x;y=it.y;size=it.es;}
+      // Spike生成
+      if(!it.spikeEl){
+        const spike=document.createElement("img");
+        spike.src=effect.spike.image;
+        spike.className="effect-item";
+        const spikeSize=rand(...effect.spike.sizeRatio)*W;
+        spike.style.width=spikeSize+"px";
+        spike.style.opacity=1;
+        stage.appendChild(spike);
+        it.spikeEl=spike;
       }
-      if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;
-    }
 
-    // ------------------------------
-    // float系
-    // ------------------------------
-    if(effect.type==="float"){
-      x=it.sx+(it.ex-it.sx)*t;
-      y=it.sy+Math.sin(t*6+it.phase)*20;
-      rotate=Math.si
-
-      
-    if(effect.type==="popular"){
-      const p=t; x=it.sx+(it.ex-it.sx)*p; const py=p*p; y=it.sy+(it.ey-it.sy)*py; rotate=0;
-      if(p>0.85) it.el.style.opacity=1-(p-0.85)/0.15;
-    }
-    if(effect.type==="throw"){
-      if(elapsed<CHARGE_TIME){const shake=Math.sin(elapsed/50)*SHAKE_POWER; x=it.sx+shake; y=it.sy; rotate=it.rotBase+shake*0.5;}
-      else{
-        const throwT=Math.min((elapsed-CHARGE_TIME)/(total-CHARGE_TIME),1);
-        const p=easeOutExpo(throwT);
-        if(p<0.85&&!it.state){x=it.sx+(it.ex-it.sx)*p;y=it.sy+(it.ey-it.sy)*p;size=it.ss+(it.es-it.ss)*p;rotate=it.rotBase+(1-p)*360;}
-        else{if(!it.state){it.state="fall";it.x=it.ex;it.y=it.ey;it.vy=-IMPACT_BOUNCE*0.1;} it.vy+=1.2; it.y+=it.vy; x=it.x;y=it.y;size=it.es;}
+      // Spike追従＋反時計回り
+      if(it.spikeEl){
+        const spikeX=x+size/2;
+        const spikeY=y-size/2;
+        it.spikeEl.style.transform=`translate(${spikeX}px, ${spikeY}px) rotate(${effect.spike.rotation}deg)`;
       }
-      if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;
+
+      // Love到着→下に落とす
+      if(flyT>=1 && !it.falling){
+        it.falling=true;
+        it.vy=25;
+        it.ey=H*0.65;
+      }
     }
-    if(effect.type==="float"){x=it.sx+(it.ex-it.sx)*t;y=it.sy+Math.sin(t*6+it.phase)*20;rotate=Math.sin(t*4+it.phase)*15;if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;}
+
+    // 下落
+    if(it.falling){
+      it.vy+=1.5;
+      y+=it.vy;
+      x=W*0.55;
+      if(y>=it.ey){
+        y=it.ey;
+        if(it.spikeEl){it.spikeEl.remove(); it.spikeEl=null;}
+      }
+    }
+
     it.el.style.transform=`translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
     it.el.style.width=size+"px";
-    if(elapsed>total){it.el.remove(); it.dead=true;}
+
+    if(elapsed>effect.duration){it.el.remove(); it.dead=true;}
   });
   requestAnimationFrame(animate);
 }
-requestAnimationFrame(animate);
 
-setInterval(()=>{
-  if(items.every(it=>it.dead)){isPlaying=false; playNext();}
-},300);
+requestAnimationFrame(animate);
 </script>
 
 </body>
