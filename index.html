@@ -196,100 +196,56 @@ function animate(now){
     // ==========================
     // Spike演出(Love you so much)
     // ==========================
-    if(effect.type==="love_spike"){
-      animateLoveSpike(it, elapsed);
+   function animate(now){
+  const W=stage.clientWidth, H=stage.clientHeight;
+  items.forEach(it=>{
+    if(it.dead) return;
+    const elapsed=now-it.startTime;
+    const total=effect.duration;
+    const t=Math.min(elapsed/total,1);
+    let x=it.sx, y=it.sy, size=it.ss, rotate=0;
+
+    // ------------------------------
+    // ポップ系
+    // ------------------------------
+    if(effect.type==="pop"){
+      const floatY=Math.sin(t*8+it.phase)*18;
+      const swayRot=Math.sin(t*6+it.phase)*8;
+      if(t<0.2){const p=easeOutExpo(t/0.2); x=W/2; y=H+(H/2-H)*p+floatY;}
+      else if(t<0.8){x=W/2; y=H/2+floatY;}
+      else{const p=(t-0.8)/0.2;x=W/2;y=H/2+easeOutExpo(p)*(H/2+200)+floatY;it.el.style.opacity=1-p;}
+      rotate=swayRot;
     }
 
-    function animateLoveSpike(item, elapsed) {
-  const W = stage.clientWidth, H = stage.clientHeight;
-  let x = item.sx, y = item.sy, size = item.ss, rotate = 0;
-
-  if(!item.total) item.total = effect.duration;
-
-  // チャージで震える
-  if(elapsed < CHARGE_TIME){
-    const shake = Math.sin(elapsed / 80) * 6;
-    x = item.sx + shake;
-    y = item.sy;
-    rotate = shake * 0.5;
-  } else {
-    const flyT = Math.min((elapsed-CHARGE_TIME)/(item.total-CHARGE_TIME),1);
-    const p = easeOutExpo(flyT);
-
-    x = item.sx + (item.ex-item.sx)*p;
-    y = item.sy + (item.ey-item.sy)*p;
-    size = item.ss + (item.es-item.ss)*p;
-    rotate = item.rotBase + (1-p)*360;
-
-    // Spike を作る
-    if(!item.spikeEl){
-      const spike = document.createElement("img");
-      spike.src = effect.spike.image;
-      spike.className="effect-item";
-      const spikeSize = rand(...effect.spike.sizeRatio)*W;
-      spike.style.width = spikeSize + "px";
-      spike.style.opacity=1;
-      stage.appendChild(spike);
-      item.spikeEl = spike;
+    // ------------------------------
+    // popular系
+    // ------------------------------
+    if(effect.type==="popular"){
+      const p=t; x=it.sx+(it.ex-it.sx)*p; const py=p*p; y=it.sy+(it.ey-it.sy)*py; rotate=0;
+      if(p>0.85) it.el.style.opacity=1-(p-0.85)/0.15;
     }
 
-    // SpikeをLoveの到着位置に追従
-    if(item.spikeEl){
-      const spikeX = x + size/2;
-      const spikeY = y - size/2;
-      item.spikeEl.style.transform = `translate(${spikeX}px, ${spikeY}px) rotate(${effect.spike.rotation}deg)`;
-    }
-
-    // Loveが到着したら下に落とす
-    if(flyT>=1 && !item.falling){
-      item.falling = true;
-      item.vy = 20; // 下に落ちる速度
-      item.ey = H * 0.65; // 画面中央下
+    // ------------------------------
+    // throw系
+    // ------------------------------
+    if(effect.type==="throw"){
+      if(elapsed<CHARGE_TIME){const shake=Math.sin(elapsed/50)*SHAKE_POWER; x=it.sx+shake; y=it.sy; rotate=it.rotBase+shake*0.5;}
+      else{
+        const throwT=Math.min((elapsed-CHARGE_TIME)/(total-CHARGE_TIME),1);
+        const p=easeOutExpo(throwT);
+        if(p<0.85&&!it.state){x=it.sx+(it.ex-it.sx)*p;y=it.sy+(it.ey-it.sy)*p;size=it.ss+(it.es-it.ss)*p;rotate=it.rotBase+(1-p)*360;}
+        else{if(!it.state){it.state="fall";it.x=it.ex;it.y=it.ey;it.vy=-IMPACT_BOUNCE*0.1;} it.vy+=1.2; it.y+=it.vy; x=it.x;y=it.y;size=it.es;}
       }
+      if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;
     }
-  
-    if(item.falling){
-      item.vy += 1.2;
-      y += item.vy;
-      x = W*0.55;
-      if(y >= item.ey){
-        y = item.ey;
-        if(item.spikeEl){
-          item.spikeEl.remove();
-          item.spikeEl = null;
-        }
-      }
-    }
-  
-    item.el.style.transform = `translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
-    item.el.style.width = size + "px";
-    if(elapsed>item.total){
-      item.el.remove();
-      item.dead=true;
-    }
-  }
 
-    
-      if (item.falling) {
-        item.vy += 1.2;
-        y += item.vy;
-        x = W * 0.55; // 中央下に落とす位置調整
-        if (y >= item.ey) {
-          y = item.ey;
-          if (item.spikeEl) {
-            item.spikeEl.remove();
-            item.spikeEl = null;
-          }
-        }
-      }
-    
-      item.el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${rotate}deg)`;
-      item.el.style.width = size + "px";
-      if (elapsed > item.total) {
-        item.el.remove();
-        item.dead = true;
-      }
-    }
+    // ------------------------------
+    // float系
+    // ------------------------------
+    if(effect.type==="float"){
+      x=it.sx+(it.ex-it.sx)*t;
+      y=it.sy+Math.sin(t*6+it.phase)*20;
+      rotate=Math.si
 
       
     if(effect.type==="popular"){
