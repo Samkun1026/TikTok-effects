@@ -198,20 +198,25 @@ function animate(now){
     // ==========================
     if(effect.type === "Spike"){
       if(!it.state) it.state = "fly";
+    
+      // Spikeは最初から右上に表示
       if(!it.spikeImg){
         const spike = document.createElement("img");
-        spike.src = effect.spike.image;
+        spike.src = "Spike.png";
         spike.className = "effect-item";
         spike.style.width = rand(...effect.spike.sizeRatio)*W + "px";
-        spike.style.opacity = 0;
+        spike.style.opacity = 1;
         stage.appendChild(spike);
         it.spikeImg = spike;
         it.spikeRot = 0;
+        it.spikeX = it.ex;
+        it.spikeY = it.ey - (rand(...effect.start.sizeRatio)*H)/2;
       }
+    
       const spikeImg = it.spikeImg;
     
       if(it.state === "fly"){
-        // 飛行
+        // Loveが飛んでくる動き
         const flyT = Math.min(elapsed / total,1);
         x = it.sx + (it.ex - it.sx)*flyT + Math.sin(flyT*10 + it.phase)*15;
         y = it.sy + (it.ey - it.sy)*flyT + Math.sin(flyT*12 + it.phase)*10;
@@ -219,27 +224,22 @@ function animate(now){
         rotate = Math.sin(flyT*6 + it.phase)*20;
     
         if(flyT >= 1){
-          it.state = "hit";
-          // Spike表示
-          spikeImg.style.opacity = 1;
-          it.spikeX = x + size/2;
-          it.spikeY = y - size/2;
+          it.state = "fall"; // 到着したLoveから落下開始
+          it.vy = 6;         // 落下速度上げる
         }
-      } else if(it.state === "hit"){
-        // Loveを下に落とす
-        if(!it.vy) it.vy = 0;
-        it.vy += 1.5; // 落下速度
+      } else if(it.state === "fall"){
+        // Loveを中央下に落とす
         y += it.vy;
-        x = it.ex;
-    
-        // Spikeの回転（反時計回り）
-        it.spikeRot -= 15;
-        spikeImg.style.transform = `translate(${it.spikeX - spikeImg.width/2}px, ${it.spikeY - spikeImg.height/2}px) rotate(${it.spikeRot}deg)`;
-    
+        x = W/2; // 画面中央
+        rotate = 0;
         if(y >= H*0.65){
           it.dead = true;
           spikeImg.remove();
         }
+    
+        // Spikeの回転（反時計回り）
+        it.spikeRot -= 15;
+        spikeImg.style.transform = `translate(${it.spikeX - spikeImg.width/2}px, ${it.spikeY - spikeImg.height/2}px) rotate(${it.spikeRot}deg)`;
       }
     
       it.el.style.transform = `translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
