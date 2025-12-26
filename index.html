@@ -12,7 +12,6 @@ html, body {
   background: rgba(0,0,0,0) !important;
   overflow: hidden;
 }
-
 #stage {
   position: absolute;
   left: 50%;
@@ -22,7 +21,6 @@ html, body {
   transform: translateX(-50%);
   pointer-events: none;
 }
-
 .effect-item {
   position: absolute;
   will-change: transform, opacity;
@@ -34,7 +32,7 @@ html, body {
 
 <script>
 /* ==============================
-   🎁 ギフト定義（そのまま）
+   🎁 ギフト定義（絶対変更禁止）
 ================================ */
 const GIFT_EFFECTS = {
   heart_me: {
@@ -59,8 +57,8 @@ const GIFT_EFFECTS = {
     countLimit: 20,
     duration: 3000,
     spawnInterval: 150,
-    start: { x: [0.15, 0.20], y: [0.77, 0.83], sizeRatio: [0.12, 0.12] },
-    end: { x: [0.85, 0.95], y: [-0.15, -0.05] }
+    start: { x: [0.15, 0.20], y: [0.77, 0.83], sizeRatio: [0.12,0.12] },
+    end: { x: [0.85,0.95], y: [-0.15,-0.05] }
   },
   baseball: {
     image: "Baseball.png",
@@ -68,8 +66,8 @@ const GIFT_EFFECTS = {
     countLimit: 20,
     duration: 3200,
     spawnInterval: 120,
-    start: { x: [0.48, 0.52], y: [0.67, 0.70], sizeRatio: [0.1, 0.125] },
-    end: { x: [0.35, 0.55], y: [0.2, 0.4], sizeRatio: [0.05, 0.075] }
+    start: { x: [0.48,0.52], y: [0.67,0.70], sizeRatio: [0.1,0.125] },
+    end: { x: [0.35,0.55], y: [0.2,0.4], sizeRatio: [0.05,0.075] }
   },
   suprised_fish: {
     image: "Surprised_Fish.png",
@@ -77,13 +75,13 @@ const GIFT_EFFECTS = {
     countLimit: 30,
     duration: 6000,
     spawnInterval: 150,
-    start: { x: [-0.15, -0.05], y: [0.25, 0.6], sizeRatio: [0.05, 0.06] },
-    end: { x: [1.05, 1.15], y: [0.25, 0.6], sizeRatio: [0.05, 0.06] }
+    start: { x: [-0.15,-0.05], y: [0.25,0.6], sizeRatio: [0.05,0.06] },
+    end: { x: [1.05,1.15], y: [0.25,0.6], sizeRatio: [0.05,0.06] }
   }
 };
 
 /* ==============================
-   定数（throw原型）
+   定数
 ================================ */
 const CHARGE_TIME = 500;
 const SHAKE_POWER = 8;
@@ -95,21 +93,35 @@ const IMPACT_BOUNCE = 32;
 const rand = (a,b) => Math.random()*(b-a)+a;
 const easeOutExpo = t => (t===1?1:1-Math.pow(2,-10*t));
 
-function parseGiftText(text) {
-  const match = text.match(/^(.+?)\(\d+\)\s*x\s*(\d+)$/i);
-  if (!match) return null;
+function parseGiftText(text){
+  const match = text.match(/^(.+?)\(\d+\)\s*x\s*(\d+)$/);
+  if(!match) return null;
   const gift = match[1].trim().toLowerCase().replace(/\s+/g,"_");
   const count = parseInt(match[2],10);
-  return { gift, count };
+  return {gift,count};
 }
 
 /* ==============================
-   ステージとアイテム生成
+   URLパラメータ読み込み
+================================ */
+const params = new URLSearchParams(location.search);
+let giftKey = params.get("gift") || "heart_me";
+let rawCount = parseInt(params.get("n"),10) || 1;
+
+const effect = GIFT_EFFECTS[giftKey];
+const COUNT = Math.min(rawCount, effect.countLimit);
+
+/* ==============================
+   ステージ
 ================================ */
 const stage = document.getElementById("stage");
+
+/* ==============================
+   アイテム生成
+================================ */
 const items = [];
 
-function spawnItem(effect) {
+function spawnItem(){
   const W = stage.clientWidth;
   const H = stage.clientHeight;
 
@@ -118,57 +130,63 @@ function spawnItem(effect) {
   img.className = "effect-item";
 
   const ss = rand(...effect.start.sizeRatio)*W;
-  const es = effect.end?.sizeRatio ? rand(...effect.end.sizeRatio)*W : ss;
+  const es = effect.end?.sizeRatio?rand(...effect.end.sizeRatio)*W:ss;
 
   const item = {
     el: img,
     startTime: performance.now(),
-    ss,
-    es,
+    ss, es,
     phase: Math.random()*Math.PI*2,
     rotBase: rand(-25,25),
-    dead: false,
-    sx: effect.start.x ? rand(...effect.start.x.map(v=>v*W)) : W/2,
-    sy: effect.start.y ? rand(...effect.start.y.map(v=>v*H)) : H,
-    ex: effect.end?.x ? rand(...effect.end.x.map(v=>v*W)) : W/2,
-    ey: effect.end?.y ? rand(...effect.end.y.map(v=>v*H)) : H/2,
-    effect
+    dead:false,
+    sx: effect.start.x?rand(...effect.start.x.map(v=>v*W)):W/2,
+    sy: effect.start.y?rand(...effect.start.y.map(v=>v*H)):H,
+    ex: effect.end?.x?rand(...effect.end.x.map(v=>v*W)):W/2,
+    ey: effect.end?.y?rand(...effect.end.y.map(v=>v*H)):H/2
   };
 
-  img.style.width = ss + "px";
-  img.style.opacity = 1;
+  img.style.width = ss+"px";
+  img.style.opacity=1;
   stage.appendChild(img);
   items.push(item);
 }
 
+for(let i=0;i<COUNT;i++){
+  setTimeout(spawnItem,i*effect.spawnInterval);
+}
+
 /* ==============================
-   アニメーション（そのまま）
+   アニメーション
 ================================ */
-function animate(now) {
+function animate(now){
   const W = stage.clientWidth;
   const H = stage.clientHeight;
 
   items.forEach(it=>{
     if(it.dead) return;
 
-    const elapsed = now - it.startTime;
-    const total = it.effect.duration;
+    const elapsed = now-it.startTime;
+    const total = effect.duration;
     const t = Math.min(elapsed/total,1);
 
-    let x = it.sx;
-    let y = it.sy;
-    let size = it.ss;
-    let rotate = 0;
-    const effect = it.effect;
+    let x=it.sx, y=it.sy, size=it.ss, rotate=0;
 
     if(effect.type==="pop"){
       const floatY = Math.sin(t*8+it.phase)*18;
       const swayRot = Math.sin(t*6+it.phase)*8;
-      if(t<0.2){ const p=easeOutExpo(t/0.2); x=W/2; y=H+(H/2-H)*p+floatY;}
-      else if(t<0.8){ x=W/2; y=H/2+floatY; }
-      else{ const p=(t-0.8)/0.2; x=W/2; y=H/2+easeOutExpo(p)*(H/2+200)+floatY; it.el.style.opacity=1-p;}
+      if(t<0.2){
+        const p=easeOutExpo(t/0.2);
+        x=W/2; y=H+(H/2-H)*p+floatY;
+      } else if(t<0.8){
+        x=W/2; y=H/2+floatY;
+      } else {
+        const p=(t-0.8)/0.2;
+        x=W/2; y=H/2+easeOutExpo(p)*(H/2+200)+floatY;
+        it.el.style.opacity=1-p;
+      }
       rotate=swayRot;
     }
+
     if(effect.type==="popular"){
       const p=t;
       x=it.sx+(it.ex-it.sx)*p;
@@ -177,25 +195,43 @@ function animate(now) {
       rotate=0;
       if(p>0.85) it.el.style.opacity=1-(p-0.85)/0.15;
     }
+
     if(effect.type==="throw"){
-      if(elapsed<CHARGE_TIME){ const shake=Math.sin(elapsed/50)*SHAKE_POWER; x=it.sx+shake; y=it.sy; rotate=it.rotBase+shake*0.5; }
-      else{
+      if(elapsed<CHARGE_TIME){
+        const shake=Math.sin(elapsed/50)*SHAKE_POWER;
+        x=it.sx+shake; y=it.sy; rotate=it.rotBase+shake*0.5;
+      } else {
         const throwT=Math.min((elapsed-CHARGE_TIME)/(total-CHARGE_TIME),1);
         const p=easeOutExpo(throwT);
-        if(p<0.85&&!it.state){ x=it.sx+(it.ex-it.sx)*p; y=it.sy+(it.ey-it.sy)*p; size=it.ss+(it.es-it.ss)*p; rotate=it.rotBase+(1-p)*360; }
-        else{
-          if(!it.state){ it.state="fall"; it.x=it.ex; it.y=it.ey; it.vy=-IMPACT_BOUNCE*0.1;}
+        if(p<0.85 && !it.state){
+          x=it.sx+(it.ex-it.sx)*p;
+          y=it.sy+(it.ey-it.sy)*p;
+          size=it.ss+(it.es-it.ss)*p;
+          rotate=it.rotBase+(1-p)*360;
+        } else {
+          if(!it.state){
+            it.state="fall"; it.x=it.ex; it.y=it.ey; it.vy=-IMPACT_BOUNCE*0.1;
+          }
           it.vy+=1.2; it.y+=it.vy; x=it.x; y=it.y; size=it.es;
         }
       }
       if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;
     }
-    if(effect.type==="float"){ x=it.sx+(it.ex-it.sx)*t; y=it.sy+Math.sin(t*6+it.phase)*20; rotate=Math.sin(t*4+it.phase)*15; if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15; }
+
+    if(effect.type==="float"){
+      x=it.sx+(it.ex-it.sx)*t;
+      y=it.sy+Math.sin(t*6+it.phase)*20;
+      rotate=Math.sin(t*4+it.phase)*15;
+      if(t>0.85) it.el.style.opacity=1-(t-0.85)/0.15;
+    }
 
     it.el.style.transform=`translate(${x-size/2}px,${y-size/2}px) rotate(${rotate}deg)`;
     it.el.style.width=size+"px";
 
-    if(elapsed>total){ it.el.remove(); it.dead=true; }
+    if(elapsed>total){
+      it.el.remove();
+      it.dead=true;
+    }
   });
 
   requestAnimationFrame(animate);
@@ -204,37 +240,7 @@ function animate(now) {
 requestAnimationFrame(animate);
 
 /* ==============================
-   🎮 ギフト再生キュー
-================================ */
-const giftQueue = [];
-let isPlaying = false;
-
-function playGift(giftKey, count){
-  if(!GIFT_EFFECTS[giftKey]) return;
-  const effect = GIFT_EFFECTS[giftKey];
-  const COUNT = Math.min(count,effect.countLimit);
-  for(let i=0;i<COUNT;i++){
-    setTimeout(()=>spawnItem(effect), i*effect.spawnInterval);
-  }
-}
-
-function playNext(){
-  if(isPlaying) return;
-  if(giftQueue.length===0) return;
-  isPlaying=true;
-  const { gift, count } = giftQueue.shift();
-  playGift(gift,count);
-  const checkInterval = setInterval(()=>{
-    if(items.every(it=>it.dead)){
-      isPlaying=false;
-      clearInterval(checkInterval);
-      playNext();
-    }
-  },300);
-}
-
-/* ==============================
-   🔌 WebSocket接続（サーバーからギフト受信）
+   WebSocket受信 → URL更新して再読み込み
 ================================ */
 const ws = new WebSocket("ws://localhost:3001");
 
@@ -244,15 +250,19 @@ ws.onmessage = e=>{
   try{
     const data = JSON.parse(e.data);
     if(data.type!=="gift") return;
-    const giftKey = data.name.toLowerCase().replace(/\s+/g,"_");
-    giftQueue.push({ gift: giftKey, count: data.count });
-    playNext();
+
+    const giftKey=data.name.toLowerCase().replace(/\s+/g,"_");
+    if(!GIFT_EFFECTS[giftKey]) return;
+
+    // URL更新してページ再読み込み
+    const n = data.count || 1;
+    history.replaceState(null,"",`?gift=${giftKey}&n=${n}`);
+    location.reload();
+
   }catch(err){
-    console.error("❌ 受信エラー", err);
+    console.error("❌ 受信エラー",err);
   }
 };
-
-ws.onerror = err => console.error("❌ WebSocket エラー", err);
 </script>
 </body>
 </html>
