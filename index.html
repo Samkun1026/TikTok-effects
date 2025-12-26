@@ -53,7 +53,7 @@ const GIFT_EFFECTS = {
 
   love_you_so_much: {
   image: "Love_you_so_much.png",
-  type: "love_fly",
+  type: "Spike",
   countLimit: 10,
   duration: 4000,
   spawnInterval: 150,
@@ -193,46 +193,48 @@ function animate(now){
     it.el.style.opacity = 1 - p;
   }
 }
-    if(effect.type === "love_fly"){
-      // elapsed, t は既存の計算を使用
-      if(!it.spikeCreated && t > 0.7){
-        // Spike を生成
-        const spike = document.createElement("img");
-        spike.src = effect.spike.image;
-        spike.className = "effect-item";
-        const W = stage.clientWidth, H = stage.clientHeight;
-        const spikeSize = rand(...effect.spike.sizeRatio)*W;
-        spike.style.width = spikeSize + "px";
-        spike.style.position = "absolute";
-        spike.style.left = (it.ex + it.sx)/2 + "px";
-        spike.style.top = it.ey + "px";
-        spike.style.transform = "rotate(45deg)";
-        stage.appendChild(spike);
-        it.spike = spike;
-        it.spikeCreated = true;
-        it.spikeStartTime = performance.now();
+    if(effect.type === "Spike"){
+      if(!it.state) it.state = "fly";
+      const spikeImg = document.createElement("img");
+      spikeImg.src = "Spike.png";
+      spikeImg.className = "effect-item";
+      const spikeSize = 80; // Spikeの大きさ
+      let spikeRot = 0;
+      stage.appendChild(spikeImg);
+    
+      if(it.state === "fly"){
+        const flyT = Math.min(elapsed / total, 1);
+        x = it.sx + (it.ex - it.sx) * flyT + Math.sin(flyT * 10 + it.phase) * 15;
+        y = it.sy + (it.ey - it.sy) * flyT + Math.sin(flyT * 12 + it.phase) * 10;
+        size = it.ss + (it.es - it.ss) * flyT;
+        rotate = Math.sin(flyT * 6 + it.phase) * 20;
+    
+        if(flyT >= 1){
+          it.state = "hit";
+          spikeImg.style.width = spikeSize + "px";
+          spikeImg.style.opacity = 1;
+          spikeImg.style.position = "absolute";
+          spikeImg.style.left = x + "px";
+          spikeImg.style.top = y + "px";
+        }
+      } else if(it.state === "hit"){
+        // Spikeが反時計回りに回転
+        spikeRot -= 15;
+        spikeImg.style.transform = `translate(${x - spikeSize/2}px, ${y - spikeSize/2}px) rotate(${spikeRot}deg)`;
+        // Loveギフトを叩き落とす
+        it.y += 12; // 落下速度
+        y = it.y;
+        if(y >= H * 0.65){ // 画面下に落ちたら削除
+          it.dead = true;
+          spikeImg.remove();
+        }
       }
-    
-      // 飛ぶ動き
-      const flyT = Math.min(elapsed / total, 1);
-      const p = easeOutExpo(flyT);
-      x = it.sx + (it.ex - it.sx) * p + Math.sin(flyT*10+it.phase)*5; // 少し揺れ
-      y = it.sy + (it.ey - it.sy) * p + Math.sin(flyT*10+it.phase)*5;
-      rotate = Math.sin(flyT*10+it.phase)*10;
-    
-      // 落下
-      if(t > 0.85){
-        const fallT = (t-0.85)/0.15;
-        const H = stage.clientHeight;
-        y = it.ey + (H*0.65 - it.ey) * fallT;
-        x = it.ex;
-        if(it.spike) it.spike.style.opacity = 1 - fallT; // Spike消す
-      }
-    
-      if(t > 1){
-        if(it.spike) it.spike.remove();
+      it.el.style.transform = `translate(${x - size/2}px, ${y - size/2}px) rotate(${rotate}deg)`;
+      it.el.style.width = size + "px";
+      if(elapsed > total + 1000){ // 念のため最大寿命
         it.el.remove();
         it.dead = true;
+        spikeImg.remove();
       }
     }
 
