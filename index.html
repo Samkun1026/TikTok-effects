@@ -195,12 +195,17 @@ function animate(now){
 }
     if(effect.type === "Spike"){
       if(!it.state) it.state = "fly";
-      const spikeImg = document.createElement("img");
-      spikeImg.src = "Spike.png";
-      spikeImg.className = "effect-item";
-      const spikeSize = 80; // Spikeの大きさ
-      let spikeRot = 0;
-      stage.appendChild(spikeImg);
+      let spikeImg = it.spikeImg;
+      if(!spikeImg){
+        spikeImg = document.createElement("img");
+        spikeImg.src = "Spike.png";
+        spikeImg.className = "effect-item";
+        spikeImg.style.width = "80px";
+        spikeImg.style.opacity = 0;
+        stage.appendChild(spikeImg);
+        it.spikeImg = spikeImg;
+        it.spikeRot = 0;
+      }
     
       if(it.state === "fly"){
         const flyT = Math.min(elapsed / total, 1);
@@ -211,33 +216,32 @@ function animate(now){
     
         if(flyT >= 1){
           it.state = "hit";
-          spikeImg.style.width = spikeSize + "px";
           spikeImg.style.opacity = 1;
-          spikeImg.style.position = "absolute";
-          spikeImg.style.left = x + "px";
-          spikeImg.style.top = y + "px";
+          it.spikeX = x;
+          it.spikeY = y;
         }
       } else if(it.state === "hit"){
-        // Spikeが反時計回りに回転
-        spikeRot -= 15;
-        spikeImg.style.transform = `translate(${x - spikeSize/2}px, ${y - spikeSize/2}px) rotate(${spikeRot}deg)`;
-        // Loveギフトを叩き落とす
-        it.y += 12; // 落下速度
+        // Loveギフトを落下させる
+        if(!it.vy) it.vy = 0;
+        it.vy += 1.2; // 落下加速度
+        it.y = (it.y || y) + it.vy;
         y = it.y;
-        if(y >= H * 0.65){ // 画面下に落ちたら削除
+        x = it.ex; // 最終横位置固定
+        size = it.es;
+    
+        // Spikeを反時計回り回転
+        it.spikeRot -= 15;
+        spikeImg.style.transform = `translate(${it.spikeX - 40}px, ${it.spikeY - 40}px) rotate(${it.spikeRot}deg)`;
+    
+        // Loveが落下して下限に達したら削除
+        if(y >= H * 0.65){
           it.dead = true;
           spikeImg.remove();
         }
       }
       it.el.style.transform = `translate(${x - size/2}px, ${y - size/2}px) rotate(${rotate}deg)`;
       it.el.style.width = size + "px";
-      if(elapsed > total + 1000){ // 念のため最大寿命
-        it.el.remove();
-        it.dead = true;
-        spikeImg.remove();
-      }
     }
-
       
     if(effect.type==="popular"){
       const p=t; x=it.sx+(it.ex-it.sx)*p; const py=p*p; y=it.sy+(it.ey-it.sy)*py; rotate=0;
