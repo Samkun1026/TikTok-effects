@@ -53,13 +53,13 @@ const GIFT_EFFECTS = {
 
   love_you_so_much: {
   image: "Love_you_so_much.png",
-  type: "Spike",
+  type: "love_spike",
   countLimit: 10,
   duration: 4000,
   spawnInterval: 150,
   start: { x: [0.1, 0.15], y: [0.7, 0.75], sizeRatio: [0.08, 0.1] },
   end: { x: [0.5, 0.6], y: [0.35, 0.4], sizeRatio: [0.08, 0.1] },
-  spike: { image: "Spike.png", duration: 600, sizeRatio: [0.12, 0.16] }
+  spike: { image: "Spike.png", sizeRatio: [0.12, 0.16], rotation: -45, duration: 600 }
 }
 };
 
@@ -196,54 +196,64 @@ function animate(now){
     // ==========================
     // Spike演出(Love you so much)
     // ==========================
-    if(effect.type === "Spike"){
-      if(!it.state) it.state = "fly";
+    function animateLoveSpike(item, elapsed, t) {
+      const W = stage.clientWidth, H = stage.clientHeight;
+      let x = item.sx, y = item.sy, size = item.ss, rotate = 0;
     
-      // Spikeは最初から右上に表示
-      if(!it.spikeImg){
-        const spike = document.createElement("img");
-        spike.src = "Spike.png";
-        spike.className = "effect-item";
-        spike.style.width = rand(...effect.spike.sizeRatio)*W + "px";
-        spike.style.opacity = 1;
-        stage.appendChild(spike);
-        it.spikeImg = spike;
-        it.spikeRot = 0;
-        it.spikeX = it.ex;
-        it.spikeY = it.ey - (rand(...effect.start.sizeRatio)*H)/2;
-      }
+      if (elapsed < CHARGE_TIME) {
+        // 震える（チャージ）
+        const shake = Math.sin(elapsed / 80) * 6; // 震え速度遅め
+        x = item.sx + shake;
+        y = item.sy;
+        rotate = shake * 0.5;
+      } else {
+        const flyT = Math.min((elapsed - CHARGE_TIME) / (item.total - CHARGE_TIME), 1);
+        const p = easeOutExpo(flyT);
+        x = item.sx + (item.ex - item.sx) * p;
+        y = item.sy + (item.ey - item.sy) * p;
+        size = item.ss + (item.es - item.ss) * p;
+        rotate = item.rotBase + (1 - p) * 360;
     
-      const spikeImg = it.spikeImg;
-    
-      if(it.state === "fly"){
-        // Loveが飛んでくる動き
-        const flyT = Math.min(elapsed / total,1);
-        x = it.sx + (it.ex - it.sx)*flyT + Math.sin(flyT*10 + it.phase)*15;
-        y = it.sy + (it.ey - it.sy)*flyT + Math.sin(flyT*12 + it.phase)*10;
-        size = it.ss + (it.es - it.ss)*flyT;
-        rotate = Math.sin(flyT*6 + it.phase)*20;
-    
-        if(flyT >= 1){
-          it.state = "fall"; // 到着したLoveから落下開始
-          it.vy = 6;         // 落下速度上げる
-        }
-      } else if(it.state === "fall"){
-        // Loveを中央下に落とす
-        y += it.vy;
-        x = W/2; // 画面中央
-        rotate = 0;
-        if(y >= H*0.65){
-          it.dead = true;
-          spikeImg.remove();
+        // Spike の表示タイミング
+        if (!item.spikeEl) {
+          const spike = document.createElement("img");
+          spike.src = item.effect.spike.image;
+          spike.className = "effect-item";
+          const spikeSize = rand(...item.effect.spike.sizeRatio) * W;
+          spike.style.width = spikeSize + "px";
+          spike.style.opacity = 1;
+          stage.appendChild(spike);
+          item.spikeEl = spike;
         }
     
-        // Spikeの回転（反時計回り）
-        it.spikeRot -= 15;
-        spikeImg.style.transform = `translate(${it.spikeX - spikeImg.width/2}px, ${it.spikeY - spikeImg.height/2}px) rotate(${it.spikeRot}deg)`;
+        if (flyT >= 1 && !item.falling) {
+          item.falling = true;
+          item.vy = 12; // 下落速度
+          item.ey = H * 0.65; // 画面中央下
+          // Spikeを反時計回りに回転
+          item.spikeEl.style.transform = `translate(${x}px, ${y}px) rotate(${item.effect.spike.rotation}deg)`;
+        }
       }
     
-      it.el.style.transform = `translate(${x-size/2}px, ${y-size/2}px) rotate(${rotate}deg)`;
-      it.el.style.width = size + "px";
+      if (item.falling) {
+        item.vy += 1.2;
+        y += item.vy;
+        x = W * 0.55; // 中央下に落とす位置調整
+        if (y >= item.ey) {
+          y = item.ey;
+          if (item.spikeEl) {
+            item.spikeEl.remove();
+            item.spikeEl = null;
+          }
+        }
+      }
+    
+      item.el.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${rotate}deg)`;
+      item.el.style.width = size + "px";
+      if (elapsed > item.total) {
+        item.el.remove();
+        item.dead = true;
+      }
     }
 
       
